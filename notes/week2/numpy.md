@@ -1,69 +1,36 @@
-# 📒 Week 2 - Day 1 Notes — NumPy Fundamentals
+Absolutely. I’ll make this a **quick-revision note**, rather than a transcript of everything we discussed. The idea is that a few months from now you should be able to read this in 10–15 minutes and recover the important NumPy mental models.
 
-## 🎯 Day Objective
+# 📒 NumPy Revision — Day 1 & Day 2
 
-Understand the fundamentals of NumPy and learn why numerical arrays are more suitable than regular Python Lists for numerical and ML-oriented data processing.
+## 🎯 Objective
 
-The focus was to move from manually processing collections using Python loops toward **array-oriented and vectorized numerical operations**.
+Learn enough NumPy to comfortably understand and manipulate numerical data used in ML/MLOps workflows.
 
-The exercises used SRE-oriented data such as:
+The goal is **not NumPy mastery**.
 
-* CPU utilization
-* Memory utilization
-* Request latency
-* Error rates
-* Service metrics
-
-This provided the first bridge from general Python programming toward **data processing and ML engineering**.
-
----
-
-# 📚 Concepts Learned
-
-## What is NumPy?
-
-NumPy is a Python library designed for efficient numerical computing.
-
-The central NumPy object is:
+The important mental model is:
 
 ```text
-ndarray
-```
-
-which means:
-
-> **N-dimensional array**
-
-Example:
-
-```python
-import numpy as np
-
-cpu = np.array([
-    82,
-    55,
-    91,
-    67
-])
-```
-
-The type can be checked using:
-
-```python
-print(type(cpu))
-```
-
-which returns a NumPy:
-
-```text
-ndarray
+Python Lists
+     ↓
+NumPy Arrays
+     ↓
+Efficient Numerical Data
+     ↓
+Vectorized Operations
+     ↓
+Filtering / Aggregation
+     ↓
+Feature Matrix (X)
+     ↓
+Machine Learning
 ```
 
 ---
 
-## Python List vs NumPy Array
+# DAY 1 — Arrays, Indexing, Slicing & Vectorization
 
-One of the first experiments demonstrated an important difference between Python Lists and NumPy arrays.
+# 1. Python List vs NumPy Array
 
 Python List:
 
@@ -73,23 +40,19 @@ numbers = [1, 2, 3, 4]
 print(numbers * 2)
 ```
 
-produces:
+Result:
 
 ```text
 [1, 2, 3, 4, 1, 2, 3, 4]
 ```
 
-For a List:
+List multiplication repeats the collection.
 
-```text
-* 2
- ↓
-Repeat the collection twice
-```
-
-With NumPy:
+NumPy:
 
 ```python
+import numpy as np
+
 numbers = np.array([
     1,
     2,
@@ -100,7 +63,7 @@ numbers = np.array([
 print(numbers * 2)
 ```
 
-produces:
+Result:
 
 ```text
 [2 4 6 8]
@@ -112,32 +75,58 @@ Mental model:
 
 ```text
 Python List
-     ↓
-General-purpose collection
+
+collection * 2
+      ↓
+repeat collection
 
 
 NumPy Array
-     ↓
-Numerical array
-     ↓
-Element-wise numerical operations
+
+array * 2
+      ↓
+element-wise multiplication
 ```
 
-Important learning:
-
-> NumPy provides an array-oriented model for numerical computation rather than normal Python collection behavior.
+This is the beginning of **vectorization**.
 
 ---
 
-# Array Shape, Size & Dimensions
+# 2. `ndarray`
 
-Three important NumPy properties were introduced:
+NumPy's main array object is:
 
 ```python
-array.shape
-array.size
-array.ndim
+numpy.ndarray
 ```
+
+Example:
+
+```python
+cpu = np.array([
+    82,
+    55,
+    91,
+    67
+])
+
+print(type(cpu))
+```
+
+An `ndarray` can have multiple dimensions:
+
+```text
+1D
+2D
+3D
+...
+```
+
+For our current ML/MLOps work, **1D and 2D arrays are the most important**.
+
+---
+
+# 3. Important Array Properties ⭐⭐⭐⭐⭐
 
 Given:
 
@@ -150,222 +139,85 @@ cpu = np.array([
 ])
 ```
 
-the result is conceptually:
-
-```text
-shape → (4,)
-size  → 4
-ndim  → 1
-```
-
-Mental model:
-
-```text
-shape
-  ↓
-How is the data arranged?
-
-
-size
-  ↓
-How many total elements exist?
-
-
-ndim
-  ↓
-How many dimensions exist?
-```
-
-These concepts become increasingly important when working with ML datasets.
-
----
-
-# One-Dimensional Arrays
-
-Example:
-
-```python
-cpu = np.array([
-    82,
-    55,
-    91,
-    67
-])
-```
-
-This is a one-dimensional array.
-
-```python
-cpu.ndim
-```
-
-returns:
-
-```text
-1
-```
-
-and:
+## `shape`
 
 ```python
 cpu.shape
 ```
 
-returns:
+Result:
 
 ```text
 (4,)
 ```
 
-The trailing comma represents a one-dimensional shape containing four elements.
+Describes the structure of the array.
 
 ---
 
-# Two-Dimensional Arrays
-
-NumPy arrays can contain multiple dimensions.
-
-Example:
+## `ndim`
 
 ```python
-metrics = np.array([
-    [82, 71],
-    [55, 60],
-    [91, 84]
-])
+cpu.ndim
 ```
 
-Conceptually:
+Result:
 
 ```text
-               CPU     Memory
-
-payment-api     82       71
-orders-api      55       60
-inventory-api   91       84
+1
 ```
 
-The array has:
-
-```text
-shape → (3, 2)
-ndim  → 2
-size  → 6
-```
-
-Meaning:
-
-```text
-3 rows
-2 columns
-6 total values
-```
-
-This is the beginning of thinking about numerical data as matrices rather than individual Python values.
+Number of dimensions.
 
 ---
 
-# NumPy Indexing
-
-Individual values can be accessed using:
+## `size`
 
 ```python
-array[row, column]
+cpu.size
 ```
 
-Given:
-
-```python
-metrics = np.array([
-    [82, 71],
-    [55, 60],
-    [91, 84]
-])
-```
-
-CPU of `payment-api`:
-
-```python
-metrics[0, 0]
-```
-
-Memory of `payment-api`:
-
-```python
-metrics[0, 1]
-```
-
-CPU of `inventory-api`:
-
-```python
-metrics[2, 0]
-```
-
-Important learning:
+Result:
 
 ```text
-metrics[row, column]
+4
 ```
 
-provides a clear mental model for accessing two-dimensional numerical data.
+Total number of elements.
 
 ---
 
-# NumPy Slicing
-
-Entire rows or columns can be selected using slicing.
-
-Entire second row:
+## `dtype`
 
 ```python
-metrics[1]
+cpu.dtype
 ```
 
-Entire first column:
+Something like:
 
-```python
-metrics[:, 0]
+```text
+int64
 ```
 
-Entire second column:
-
-```python
-metrics[:, 1]
-```
-
-First two rows:
-
-```python
-metrics[0:2, :]
-```
+Represents the data type used by the array.
 
 Mental model:
 
 ```text
-:
- ↓
-All values along that dimension
+shape → structure
+
+ndim  → number of dimensions
+
+size  → total elements
+
+dtype → element data type
 ```
-
-Therefore:
-
-```python
-metrics[:, 0]
-```
-
-means:
-
-> All rows from column 0.
-
-This becomes very useful when columns represent numerical features.
 
 ---
 
-# Vectorized Operations ⭐
+# 4. One-Dimensional Indexing
 
-One of the most important NumPy concepts learned was **vectorization**.
-
-Given:
+NumPy indexing behaves similarly to Python Lists.
 
 ```python
 latencies = np.array([
@@ -377,33 +229,360 @@ latencies = np.array([
 ])
 ```
 
-operations can be applied directly to the complete array.
-
-Addition:
+First:
 
 ```python
-latencies + 10
+latencies[0]
 ```
 
-Multiplication:
+Last:
 
 ```python
-latencies * 2
+latencies[-1]
 ```
 
-Division:
+Second:
 
 ```python
-latencies / 1000
+latencies[1]
 ```
 
-Comparison:
+Second-last:
 
 ```python
-latencies > 300
+latencies[-2]
 ```
 
-No explicit Python loop is required.
+Indexes start at:
+
+```text
+0
+```
+
+---
+
+# 5. Slicing
+
+Syntax:
+
+```python
+array[start:stop]
+```
+
+Important:
+
+```text
+start → included
+
+stop → excluded
+```
+
+Example:
+
+```python
+latencies[1:4]
+```
+
+returns values at indexes:
+
+```text
+1
+2
+3
+```
+
+Useful patterns:
+
+```python
+latencies[:3]
+```
+
+First three.
+
+```python
+latencies[2:]
+```
+
+Everything from index 2 onward.
+
+```python
+latencies[:]
+```
+
+Entire array.
+
+---
+
+# 6. Two-Dimensional Arrays ⭐⭐⭐⭐⭐
+
+Example:
+
+```python
+metrics = np.array([
+    [82, 71],
+    [55, 60],
+    [91, 84]
+])
+```
+
+Think:
+
+```text
+             CPU    MEMORY
+
+service 0     82      71
+service 1     55      60
+service 2     91      84
+```
+
+Properties:
+
+```python
+metrics.shape
+```
+
+```text
+(3, 2)
+```
+
+Meaning:
+
+```text
+3 rows
+2 columns
+```
+
+And:
+
+```python
+metrics.ndim
+```
+
+returns:
+
+```text
+2
+```
+
+while:
+
+```python
+metrics.size
+```
+
+returns:
+
+```text
+6
+```
+
+---
+
+# 7. 2D Indexing
+
+Mental model:
+
+```python
+metrics[row, column]
+```
+
+Example:
+
+```python
+metrics[0, 0]
+```
+
+means:
+
+```text
+row 0
+column 0
+```
+
+Result:
+
+```text
+82
+```
+
+Similarly:
+
+```python
+metrics[0, 1]
+```
+
+returns:
+
+```text
+71
+```
+
+---
+
+# 8. Selecting Entire Rows
+
+```python
+metrics[0, :]
+```
+
+means:
+
+```text
+row 0
+all columns
+```
+
+Result:
+
+```text
+[82 71]
+```
+
+NumPy also allows:
+
+```python
+metrics[0]
+```
+
+but the explicit syntax helps reinforce:
+
+```text
+[row, column]
+```
+
+---
+
+# 9. Selecting Entire Columns ⭐⭐⭐⭐⭐
+
+```python
+metrics[:, 0]
+```
+
+means:
+
+```text
+ALL ROWS
+COLUMN 0
+```
+
+If column 0 represents CPU:
+
+```text
+[82 55 91]
+```
+
+Similarly:
+
+```python
+metrics[:, 1]
+```
+
+returns all memory values.
+
+The colon:
+
+```text
+:
+```
+
+means:
+
+> **all values along that dimension**
+
+This is an important NumPy mental model.
+
+---
+
+# 10. Selecting Multiple Rows / Columns
+
+Given:
+
+```python
+metrics = np.array([
+    [82, 71, 120],
+    [55, 60, 340],
+    [91, 84, 450],
+    [67, 52, 180],
+    [88, 79, 510]
+])
+```
+
+where:
+
+```text
+column 0 → CPU
+column 1 → Memory
+column 2 → Latency
+```
+
+First three services:
+
+```python
+metrics[0:3, :]
+```
+
+CPU + Memory:
+
+```python
+metrics[:, 0:2]
+```
+
+Memory + Latency:
+
+```python
+metrics[:, 1:3]
+```
+
+Remember:
+
+```text
+stop index is excluded
+```
+
+so:
+
+```text
+0:2
+```
+
+means columns:
+
+```text
+0 and 1
+```
+
+---
+
+# 11. Vectorization ⭐⭐⭐⭐⭐
+
+Instead of:
+
+```python
+for value in cpu:
+    ...
+```
+
+NumPy lets us operate directly on the array.
+
+Example:
+
+```python
+cpu / 100
+```
+
+produces:
+
+```text
+[0.82 0.55 0.91 0.67 0.88]
+```
+
+Similarly:
+
+```python
+latency * 2
+```
+
+operates on every latency.
 
 Mental model:
 
@@ -412,116 +591,156 @@ Array
   ↓
 Operation
   ↓
-Apply operation to elements
-  ↓
-New Array
+Applied to all compatible elements
 ```
-
-This is fundamentally different from manually iterating through Python Lists.
 
 ---
 
-# Boolean Arrays
+# 12. Percentage Transformation
 
-A comparison against a NumPy array produces an array of Boolean values.
+A useful correction from the exercises:
+
+To increase something by 10%:
+
+❌ Incorrect:
+
+```python
+latency + 0.1
+```
+
+That adds `0.1`.
+
+Correct:
+
+```python
+latency + (latency * 0.10)
+```
+
+or:
+
+```python
+latency * 1.10
+```
 
 Example:
 
-```python
-latencies > 300
-```
-
-can produce:
-
 ```text
-[False True False True False]
+120 × 1.10 = 132
 ```
 
-Each Boolean corresponds to the element at the same position.
+Important lesson:
 
-Conceptually:
-
-```text
-120 > 300 → False
-340 > 300 → True
-89  > 300 → False
-450 > 300 → True
-230 > 300 → False
-```
-
-This Boolean array can then be used for filtering.
+> Vectorization doesn't change the underlying mathematics.
 
 ---
 
-# Boolean Masking ⭐⭐⭐⭐⭐
+# DAY 2 — Boolean Masking, Aggregations, Axis & Reshape
 
-Boolean masking allows NumPy arrays to be filtered without manually writing loops.
+# 13. Boolean Conditions ⭐⭐⭐⭐⭐
 
-Example:
-
-```python
-latencies[
-    latencies > 300
-]
-```
-
-returns only values where the condition is `True`.
-
-For:
+Given:
 
 ```python
-latencies = np.array([
-    120,
-    340,
-    89,
-    450,
-    230
+cpu = np.array([
+    82,
+    55,
+    91,
+    67,
+    88
 ])
 ```
 
-the result is:
+Run:
+
+```python
+cpu > 80
+```
+
+Result:
 
 ```text
-[340 450]
+[ True False  True False  True]
+```
+
+NumPy performs the comparison against every element.
+
+This Boolean array is called a:
+
+```text
+Boolean mask
+```
+
+---
+
+# 14. Boolean Masking ⭐⭐⭐⭐⭐
+
+Apply the condition:
+
+```python
+cpu[cpu > 80]
+```
+
+Result:
+
+```text
+[82 91 88]
 ```
 
 Mental model:
 
 ```text
-Array
-  ↓
-Condition
-  ↓
-Boolean Mask
-  ↓
-Apply Mask
-  ↓
-Filtered Array
-```
+CPU
 
-This is one of the most important concepts from today's session because the same idea will appear again while working with Pandas.
+82    55    91    67    88
+
+ ↓ condition
+
+T     F     T     F     T
+
+ ↓ filter
+
+82          91          88
+```
 
 ---
 
-# Combining Boolean Conditions
+# 15. Condition vs Filter
 
-Multiple NumPy conditions can be combined.
-
-For example:
+Important distinction:
 
 ```python
-latencies = np.array([
-    120,
-    450,
-    80,
-    600,
-    210,
-    90,
-    510
-])
+cpu > 80
 ```
 
-To find values between `100` and `300`:
+returns:
+
+```text
+True / False values
+```
+
+while:
+
+```python
+cpu[cpu > 80]
+```
+
+returns:
+
+```text
+actual matching values
+```
+
+---
+
+# 16. Multiple Conditions
+
+For:
+
+```text
+100 ≤ latency ≤ 300
+```
+
+use:
 
 ```python
 mask = (
@@ -530,40 +749,112 @@ mask = (
     (latencies <= 300)
 )
 
-filtered_latencies = latencies[mask]
+latencies[mask]
 ```
 
-Result:
+Operators:
 
 ```text
-[120 210]
+& → AND
+
+| → OR
 ```
 
-Important NumPy distinction:
+Use parentheses around individual comparisons:
 
-For element-wise Boolean operations:
-
-```text
-&  → AND
-|  → OR
-~  → NOT
+```python
+(condition1) & (condition2)
 ```
 
-rather than Python's normal scalar Boolean operators:
+not:
+
+```python
+condition1 and condition2
+```
+
+for NumPy array comparisons.
+
+---
+
+# 17. Filtering 2D Arrays ⭐⭐⭐⭐⭐
+
+Given:
+
+```python
+metrics = np.array([
+    [82, 71, 120],
+    [55, 60, 340],
+    [91, 84, 450],
+    [67, 52, 180],
+    [88, 79, 510]
+])
+```
+
+CPU values:
+
+```python
+metrics[:, 0]
+```
+
+CPU condition:
+
+```python
+metrics[:, 0] > 80
+```
+
+Filter complete service rows:
+
+```python
+metrics[
+    metrics[:, 0] > 80
+]
+```
+
+Result contains the **entire rows** matching the condition.
+
+Mental model:
 
 ```text
-and
-or
-not
+Create condition using one column
+              ↓
+Condition gives one True/False per row
+              ↓
+Apply mask to complete 2D array
+              ↓
+Keep matching rows
 ```
 
 ---
 
-# Aggregation
+# 18. Multiple Conditions on Rows
 
-NumPy provides built-in functions for summarizing numerical arrays.
+CPU > 80 AND latency > 300:
 
-Practiced:
+```python
+metrics[
+    (metrics[:, 0] > 80)
+    &
+    (metrics[:, 2] > 300)
+]
+```
+
+Memory > 70 OR latency > 400:
+
+```python
+metrics[
+    (metrics[:, 1] > 70)
+    |
+    (metrics[:, 2] > 400)
+]
+```
+
+This pattern appears frequently in data analysis.
+
+---
+
+# 19. Aggregations ⭐⭐⭐⭐⭐
+
+Useful NumPy aggregation functions:
 
 ```python
 np.sum()
@@ -573,111 +864,73 @@ np.max()
 np.std()
 ```
 
-Given:
+Example:
 
 ```python
-latencies = np.array([
-    120,
-    450,
-    80,
-    600,
-    210,
-    90,
-    510
-])
+np.mean(metrics[:, 0])
 ```
 
-these can calculate:
+means:
 
-```text
-Total latency
-Average latency
-Minimum latency
-Maximum latency
-Standard deviation
-```
-
-This connected directly with the manual algorithms written during Week 1.
-
-Previously:
-
-```text
-Initialize accumulator
-      ↓
-Loop
-      ↓
-Add values
-      ↓
-Calculate result
-```
-
-Now:
+> Average CPU.
 
 ```python
-np.sum(latencies)
-np.mean(latencies)
+np.max(metrics[:, 0])
 ```
 
-can perform those numerical aggregations directly.
+means:
 
-Important learning:
+> Highest CPU.
 
-> Understanding the manual algorithm first made NumPy's aggregation functions easier to understand rather than treating them as magic.
+```python
+np.min(metrics[:, 2])
+```
+
+means:
+
+> Lowest latency.
 
 ---
 
-# Standard Deviation
-
-Practiced:
+# 20. Standard Deviation
 
 ```python
-np.std(latencies)
+np.std(...)
 ```
 
-Standard deviation provides information about how spread out the numerical values are around their average.
+measures how spread out values are.
 
-At the current stage, the focus is simply to understand:
+At our current level:
 
 ```text
-Low standard deviation
+Small standard deviation
         ↓
-Values relatively close together
+values relatively close together
 
 
-High standard deviation
+Large standard deviation
         ↓
-Values more spread out
+values more spread out
 ```
 
-The deeper statistical interpretation will be introduced when required for ML.
+No deeper statistics are required yet.
 
 ---
 
-# Understanding `axis` ⭐⭐⭐⭐⭐
+# 21. `axis` ⭐⭐⭐⭐⭐
 
-The `axis` argument controls the direction along which an aggregation operates.
+One of the most important NumPy concepts.
 
 Given:
 
-```python
-metrics = np.array([
-    [82, 71],
-    [55, 60],
-    [91, 84]
-])
+```text
+metrics.shape = (5, 3)
+
+5 rows
+3 columns
 ```
 
-Without an axis:
-
-```python
-np.mean(metrics)
-```
-
-NumPy calculates the mean across all elements.
-
----
-
-## `axis=0`
+Run:
 
 ```python
 np.mean(
@@ -686,36 +939,29 @@ np.mean(
 )
 ```
 
-operates down the rows and produces one result per column.
-
-Conceptually:
-
-```text
-        CPU     Memory
-         ↓         ↓
-        mean      mean
-```
-
-Result represents:
-
-```text
-Average CPU
-Average Memory
-```
-
 Mental model:
 
 ```text
 axis=0
    ↓
-Reduce DOWN the rows
+collapse ROWS
    ↓
-One result per column
+one result per COLUMN
 ```
+
+Therefore the result contains:
+
+```text
+average CPU
+average Memory
+average Latency
+```
+
+Three results.
 
 ---
 
-## `axis=1`
+# 22. `axis=1`
 
 ```python
 np.mean(
@@ -724,585 +970,432 @@ np.mean(
 )
 ```
 
-operates across the columns and produces one result per row.
-
-Conceptually:
-
-```text
-Service 1 → mean(CPU, Memory)
-Service 2 → mean(CPU, Memory)
-Service 3 → mean(CPU, Memory)
-```
-
 Mental model:
 
 ```text
 axis=1
    ↓
-Reduce ACROSS columns
+collapse COLUMNS
    ↓
-One result per row
+one result per ROW
 ```
 
-Important learning:
+Because we have five rows, this returns five values.
 
-> It is safer to understand the direction of reduction than simply memorizing that `axis=0` means columns and `axis=1` means rows.
+Important:
+
+> Do not memorize "axis 0 = columns".
+
+Better mental model:
+
+```text
+axis=0
+→ collapse rows
+→ result per column
+
+axis=1
+→ collapse columns
+→ result per row
+```
+
+This prevents confusion later.
 
 ---
 
-# Array Creation Utilities
+# 23. Just Because NumPy Can Doesn't Mean You Should
 
-Practiced basic NumPy utilities for creating arrays.
-
-## `np.zeros()`
+For example:
 
 ```python
-np.zeros(5)
-```
-
-creates an array initialized with zeros.
-
----
-
-## `np.ones()`
-
-```python
-np.ones(5)
-```
-
-creates an array initialized with ones.
-
----
-
-## `np.arange()`
-
-```python
-np.arange(
-    0,
-    10,
-    2
+np.mean(
+    metrics,
+    axis=1
 )
 ```
 
-creates evenly spaced values using:
+would average:
 
 ```text
-start
-stop
-step
+CPU
++
+Memory
++
+Latency
 ```
 
-similar to Python's `range()`.
+for each service.
+
+Mathematically valid.
+
+But probably meaningless because they represent different units.
+
+Important engineering lesson:
+
+> NumPy understands numbers. It does not understand business meaning.
 
 ---
 
-## `np.linspace()`
-
-```python
-np.linspace(
-    0,
-    1,
-    5
-)
-```
-
-creates a specified number of evenly spaced values between two boundaries.
-
-Only the basic usage of these utilities was required.
-
----
-
-# Reshaping Arrays
-
-NumPy can change how existing data is arranged using:
-
-```python
-reshape()
-```
-
-Example:
-
-```python
-data = np.arange(24)
-```
-
-Initially:
-
-```text
-shape → (24,)
-```
-
-The same data can be reshaped:
-
-```python
-data.reshape(
-    6,
-    4
-)
-```
-
-producing:
-
-```text
-shape → (6, 4)
-```
-
-or:
-
-```python
-data.reshape(
-    4,
-    6
-)
-```
-
-producing:
-
-```text
-shape → (4, 6)
-```
-
-Important learning:
-
-> `reshape()` changes how the data is arranged but does not change the number of elements.
-
-Mental model:
-
-```text
-24 elements
-
-6 × 4 = 24  ✅
-4 × 6 = 24  ✅
-```
-
-A reshape must therefore be compatible with the total number of elements.
-
----
-
-# Element-Wise vs Matrix Operations
-
-NumPy distinguishes between element-wise operations and matrix operations.
+# 24. Counting Boolean Conditions
 
 Given:
 
 ```python
-A = np.array([
-    [1, 2],
-    [3, 4]
-])
-
-B = np.array([
-    [5, 6],
-    [7, 8]
-])
+cpu = metrics[:, 0]
 ```
 
-Element-wise multiplication:
+then:
 
 ```python
-A * B
+cpu > 80
 ```
 
-multiplies corresponding elements.
+produces Booleans.
 
-Matrix multiplication:
-
-```python
-A @ B
-```
-
-performs matrix multiplication.
-
-Only the distinction was introduced today.
-
-Deeper linear algebra will be learned when it becomes relevant to ML rather than studying it independently.
-
----
-
-# SRE Metrics Challenge
-
-Practiced NumPy using:
-
-```python
-metrics = np.array([
-    [82, 71, 0.02],
-    [55, 60, 0.01],
-    [91, 84, 0.07],
-    [67, 52, 0.03],
-    [88, 79, 0.06]
-])
-```
-
-Columns represented:
+In numerical operations:
 
 ```text
-CPU
-Memory
-Error Rate
+True  → 1
+False → 0
 ```
-
-Used NumPy to calculate:
-
-* Array shape
-* Average CPU
-* Average memory
-* Highest CPU
-* Highest error rate
-* CPU values greater than 80
-* Error rates greater than 0.05
-* Average values by metric
-* Normalized CPU values
-* Reshaped numerical data
-
-This combined:
-
-```text
-2D Arrays
-   +
-Column Slicing
-   +
-Boolean Masking
-   +
-Aggregation
-   +
-Vectorization
-   +
-Reshaping
-```
-
----
-
-# Selecting Columns from a 2D Array
-
-Given:
-
-```text
-Column 0 → CPU
-Column 1 → Memory
-Column 2 → Error Rate
-```
-
-CPU values can be selected using:
-
-```python
-metrics[:, 0]
-```
-
-Memory:
-
-```python
-metrics[:, 1]
-```
-
-Error rate:
-
-```python
-metrics[:, 2]
-```
-
-This is an important foundation for understanding ML features.
-
-Later:
-
-```text
-Rows
- ↓
-Samples / observations
-
-Columns
- ↓
-Features
-```
-
-will become a central ML concept.
-
----
-
-# Filtering 2D Numerical Data
-
-To identify CPU values greater than `80`:
-
-```python
-metrics[
-    metrics[:, 0] > 80,
-    0
-]
-```
-
-Conceptually:
-
-```text
-Select CPU column
-       ↓
-CPU > 80
-       ↓
-Boolean mask
-       ↓
-Apply mask
-       ↓
-Matching CPU values
-```
-
-The same pattern was used for error rates greater than `0.05`.
-
----
-
-# Normalization
-
-Practiced a very simple normalization operation:
-
-```python
-metrics[:, 0] / 100
-```
-
-For CPU percentages such as:
-
-```text
-82
-55
-91
-67
-88
-```
-
-this produces values such as:
-
-```text
-0.82
-0.55
-0.91
-0.67
-0.88
-```
-
-This introduced the general idea of transforming numerical features into another scale.
-
-More formal feature scaling and normalization will be covered later when working with ML preprocessing.
-
----
-
-# Data Representation Matters
-
-One important observation from the final challenge was that the NumPy array contained:
-
-```text
-CPU
-Memory
-Error Rate
-```
-
-but did not contain service names.
 
 Therefore:
 
 ```python
-metrics[
-    metrics[:, 0] > 80,
-    0
-]
-```
-
-can return matching CPU values but cannot directly tell us:
-
-```text
-payment-api
-inventory-api
-...
-```
-
-unless labels are stored separately.
-
-This demonstrated an important distinction:
-
-```text
-NumPy
-   ↓
-Excellent numerical representation
-
-
-But
-
-Real-world tabular data often also needs:
-   ↓
-Column names
-Row labels
-Mixed data types
-```
-
-This provides the bridge toward **Pandas DataFrames**.
-
----
-
-# Meaningful Aggregation
-
-Initially used:
-
-```python
-np.mean(metrics)
-```
-
-for "average metrics across services."
-
-This calculates one average across:
-
-```text
-CPU
-+
-Memory
-+
-Error Rate
-```
-
-Although NumPy allows this mathematically, these values represent different measurements and scales.
-
-A more meaningful calculation is:
-
-```python
-np.mean(
-    metrics,
-    axis=0
+np.sum(
+    cpu > 80
 )
 ```
 
-which produces:
+counts matching services.
 
-```text
-Average CPU
-Average Memory
-Average Error Rate
-```
-
-Important engineering learning:
-
-> Just because an operation is mathematically possible does not mean the resulting metric has useful meaning.
-
-The meaning and units of the data must be considered before aggregating it.
-
----
-
-# 💡 Engineering Learnings
-
-* NumPy arrays are designed for numerical computation.
-* `ndarray` is the central NumPy data structure.
-* `shape` describes how an array is arranged.
-* `size` describes the total number of elements.
-* `ndim` describes the number of dimensions.
-* NumPy supports multidimensional numerical data naturally.
-* Vectorized operations allow calculations without explicit Python loops.
-* Comparisons against arrays produce Boolean arrays.
-* Boolean masks allow efficient numerical filtering.
-* Multiple array conditions can be combined using `&`, `|`, and `~`.
-* Aggregation functions summarize numerical data.
-* `axis` determines the direction of aggregation.
-* `reshape()` changes structure without changing the total number of elements.
-* Element-wise multiplication and matrix multiplication are different operations.
-* Numerical data can be normalized using vectorized operations.
-* Data representation determines what questions can easily be answered.
-* Mathematical validity does not automatically imply that an aggregation is meaningful.
-* NumPy is a foundation for the numerical operations used by many ML libraries.
-
----
-
-# ⚠️ Mistakes I Made
-
-While solving the filtering exercise for requests below `100 ms`, initially wrote:
-
-```python
-latencies[
-    latencies < 300
-]
-```
-
-instead of:
-
-```python
-latencies[
-    latencies < 100
-]
-```
-
-The NumPy syntax was correct, but the implemented condition did not match the actual requirement.
-
-This reinforced an important engineering lesson:
-
-> Correct syntax does not guarantee correct logic.
-
----
-
-While calculating:
-
-> Average metrics across services
-
-initially used:
-
-```python
-np.mean(metrics)
-```
-
-This averaged CPU, Memory, and Error Rate into one number.
-
-Although NumPy can perform the calculation, combining measurements with different meanings and scales into a single average is not particularly useful.
-
-The more meaningful operation was:
+And:
 
 ```python
 np.mean(
-    metrics,
-    axis=0
+    cpu > 80
 )
 ```
 
-which calculates one average for each metric.
+calculates the proportion matching the condition.
 
----
+Example:
 
-While filtering:
+```text
+3 matching services
+5 total services
 
-```python
-metrics[
-    metrics[:, 0] > 80,
-    0
-]
+3 / 5
+= 0.60
+= 60%
 ```
 
-the result returned CPU values rather than service names.
-
-This was not a NumPy error.
-
-The service names were simply not part of the numerical array.
-
-This highlighted that:
-
-> The structure chosen for storing data determines what information is available during processing.
+This is a useful NumPy and Pandas pattern.
 
 ---
 
-# 🚀 Production / MLOps Takeaways
+# 25. `reshape()` ⭐⭐⭐⭐
 
-NumPy is not something I need to study as an isolated mathematical library.
+Create:
 
-For the MLOps journey, its importance is understanding the **numerical representation of ML data**.
+```python
+data = np.arange(12)
+```
+
+Result:
+
+```text
+[0 1 2 3 4 5 6 7 8 9 10 11]
+```
+
+Shape:
+
+```text
+(12,)
+```
+
+Now:
+
+```python
+data.reshape(
+    3,
+    4
+)
+```
+
+creates:
+
+```text
+3 rows
+4 columns
+```
+
+Important:
+
+> The values don't change. Only the structure changes.
+
+---
+
+# 26. Reshape Rule
+
+The number of elements must remain the same.
+
+With 12 elements:
+
+```text
+3 × 4 = 12   ✅
+4 × 3 = 12   ✅
+2 × 6 = 12   ✅
+6 × 2 = 12   ✅
+
+5 × 3 = 15   ❌
+```
+
+Reshape can reorganize elements.
+
+It cannot invent or remove them.
+
+---
+
+# 27. `-1` in Reshape
+
+NumPy can infer one dimension.
+
+Given 24 elements:
+
+```python
+data.reshape(
+    6,
+    -1
+)
+```
+
+NumPy calculates:
+
+```text
+24 / 6 = 4
+```
+
+therefore:
+
+```text
+shape = (6, 4)
+```
+
+Similarly:
+
+```python
+data.reshape(
+    -1,
+    8
+)
+```
+
+becomes:
+
+```text
+(3, 8)
+```
+
+Mental model:
+
+```text
+-1
+
+"NumPy, infer this dimension."
+```
+
+---
+
+# 28. Broadcasting — Basic Awareness
+
+We did not go deep into broadcasting.
+
+But we've already used it:
+
+```python
+cpu / 100
+```
+
+NumPy effectively applies the scalar `100` across all compatible elements.
+
+Another example:
+
+```python
+metrics + 10
+```
+
+At our current level:
+
+> Broadcasting allows NumPy to perform compatible operations between arrays/scalars of different shapes.
+
+We'll revisit it only if future ML work requires more depth.
+
+---
+
+# 29. Copying and Transforming Arrays ⭐⭐⭐⭐
+
+We wanted:
+
+```text
+CPU       → /100
+Memory    → /100
+Latency   → /1000
+```
+
+without modifying the original array.
+
+Our original array:
+
+```python
+metrics = np.array([
+    [82, 71, 120],
+    [55, 60, 340],
+    [91, 84, 450],
+    [67, 52, 180],
+    [88, 79, 510]
+])
+```
+
+Because the original contains integers, first create a floating-point copy:
+
+```python
+normalized = metrics.astype(float)
+```
+
+Then:
+
+```python
+normalized[:, 0] /= 100
+normalized[:, 1] /= 100
+normalized[:, 2] /= 1000
+```
+
+Result:
+
+```text
+[[0.82 0.71 0.12]
+ [0.55 0.60 0.34]
+ [0.91 0.84 0.45]
+ [0.67 0.52 0.18]
+ [0.88 0.79 0.51]]
+```
+
+Original `metrics` remains unchanged.
+
+---
+
+# 30. Why `astype(float)`?
+
+Original:
+
+```python
+metrics.dtype
+```
+
+is likely:
+
+```text
+int64
+```
+
+But:
+
+```text
+82 / 100 = 0.82
+```
+
+requires floating-point values.
+
+So:
+
+```python
+metrics.astype(float)
+```
+
+creates a new floating-point array.
+
+Mental model:
+
+```text
+Integer Array
+     ↓
+astype(float)
+     ↓
+New Floating-Point Array
+```
+
+---
+
+# 31. Broadcasting Version of the Transformation
+
+NumPy can also perform:
+
+```python
+normalized = metrics / np.array([
+    100,
+    100,
+    1000
+])
+```
 
 Conceptually:
 
 ```text
-Raw Data
-   ↓
-Numerical Representation
-   ↓
-NumPy Arrays
-   ↓
-Feature Processing
-   ↓
-ML Model
+[82, 71, 120]
+
+      ÷
+
+[100,100,1000]
+
+      ↓
+
+[0.82,0.71,0.12]
 ```
 
-ML datasets are often conceptually represented as:
+NumPy applies the same divisor pattern across each row.
+
+This is broadcasting.
+
+For learning purposes, the explicit column transformation is currently easier to reason about.
+
+---
+
+# 32. NumPy → Machine Learning ⭐⭐⭐⭐⭐
+
+This is the main reason NumPy matters for our MLOps journey.
+
+Consider:
+
+```python
+X = np.array([
+    [82, 71, 120],
+    [55, 60, 340],
+    [91, 84, 450],
+    [67, 52, 180],
+    [88, 79, 510]
+])
+```
+
+Think:
+
+```text
+                  FEATURES
+
+             CPU   MEMORY   LATENCY
+
+sample 0      82      71      120
+sample 1      55      60      340
+sample 2      91      84      450
+sample 3      67      52      180
+sample 4      88      79      510
+```
+
+Mental model:
 
 ```text
 ROWS
  ↓
-Samples / observations
+Samples
 
 
 COLUMNS
@@ -1310,132 +1403,342 @@ COLUMNS
 Features
 ```
 
-For example:
+Therefore:
 
-```text
-          CPU   Memory   Error Rate
-Service1   82     71        0.02
-Service2   55     60        0.01
-Service3   91     84        0.07
+```python
+X.shape
 ```
 
-can eventually become:
+returns:
 
 ```text
-X
- ↓
-Feature Matrix
- ↓
-ML Model
+(5, 3)
 ```
 
-NumPy concepts such as:
+Meaning:
 
 ```text
-shape
-slicing
-vectorization
-Boolean masking
-aggregation
-axis
-reshape
+5 samples
+3 features
 ```
-
-will therefore appear underneath:
-
-* Pandas
-* Scikit-learn
-* Feature preprocessing
-* Model training
-* Model inference
-* Tensor libraries
-* ML pipelines
-
-The goal is not to become a NumPy specialist.
-
-The goal is:
-
-> **Understand numerical arrays well enough that numerical data flowing through an ML system is not a black box.**
 
 ---
 
-# 🏆 End of Day Reflection
+# 33. Target Array
 
-Today's biggest takeaway was understanding the transition from **general-purpose Python collections to numerical arrays**.
+Example:
 
-During Week 1, numerical processing often looked like:
-
-```text
-List
- ↓
-for loop
- ↓
-condition
- ↓
-append
- ↓
-result
+```python
+y = np.array([
+    0,
+    0,
+    1,
+    0,
+    1
+])
 ```
 
-NumPy introduced another model:
+Shape:
 
 ```text
-Array
- ↓
-Vectorized operation
- ↓
-Boolean mask
- ↓
-Aggregation
- ↓
-Result
+(5,)
 ```
 
-The biggest concepts that clicked were:
+Relationship:
 
 ```text
-Vectorization
-Boolean Masking
-2D Slicing
-Axis
-Reshape
+X[0] ─────→ y[0]
+X[1] ─────→ y[1]
+X[2] ─────→ y[2]
+X[3] ─────→ y[3]
+X[4] ─────→ y[4]
 ```
 
-Boolean masking was especially useful because it showed how entire numerical datasets can be filtered using conditions without explicitly writing Python loops.
+Every sample must have its corresponding target.
 
-Understanding `axis` also introduced an important way of thinking about multidimensional data:
+Therefore:
+
+```text
+number of rows in X
+        =
+number of values in y
+```
+
+for this supervised-learning setup.
+
+---
+
+# 34. NumPy Mental Model for ML
+
+The key connection is:
+
+```text
+Dataset
+   ↓
+Numerical Feature Matrix
+   ↓
+X
+   ↓
+ROWS = Samples
+COLUMNS = Features
+   ↓
+Model Training
+```
+
+This is why NumPy is foundational throughout Python's ML ecosystem.
+
+---
+
+# 💡 Engineering Learnings
+
+* NumPy arrays are designed for numerical computation.
+* `shape` describes array structure.
+* `ndim` describes dimensionality.
+* `size` describes the total number of elements.
+* `dtype` describes the array's element type.
+* 2D indexing follows `[row, column]`.
+* `:` means all values along a dimension.
+* Vectorization allows operations without explicit Python loops.
+* Boolean conditions create Boolean masks.
+* Boolean masks allow efficient filtering.
+* `&` combines conditions with AND.
+* `|` combines conditions with OR.
+* Aggregations summarize numerical data.
+* `axis=0` collapses rows and returns results per column.
+* `axis=1` collapses columns and returns results per row.
+* Boolean sums can count matching records.
+* Boolean means can calculate proportions.
+* `reshape()` changes structure without changing element count.
+* `astype(float)` is useful when transformations require decimal values.
+* NumPy does not understand the semantic meaning of columns.
+* Rows commonly represent samples and columns commonly represent features in ML.
+
+---
+
+# ⚠️ Mistakes / Clarifications
+
+## Percentage increase
+
+Incorrect:
+
+```python
+latency + 0.1
+```
+
+This adds `0.1`.
+
+For a 10% increase:
+
+```python
+latency * 1.10
+```
+
+---
+
+## `axis`
+
+Avoid memorizing:
+
+```text
+axis=0 means columns
+axis=1 means rows
+```
+
+Better:
 
 ```text
 axis=0
- ↓
-Reduce down rows
- ↓
-Result per column
+→ collapse rows
+→ result per column
 
 
 axis=1
- ↓
-Reduce across columns
- ↓
-Result per row
+→ collapse columns
+→ result per row
 ```
 
-Another important learning was that **understanding the data is as important as knowing the NumPy operation**.
+---
 
-NumPy may allow an operation, but I still need to ask:
+## Transformation of Integer Arrays
 
-> **"Does this calculation make sense for the data and units I am working with?"**
+If:
 
-From today onwards, when looking at numerical ML data, I'll consciously ask:
+```python
+metrics.dtype
+```
 
-> **"What is the shape, what do the rows represent, what do the columns represent, and which dimension am I operating on?"**
+is integer-based, transformations such as:
 
-This is the first major step from Python engineering toward **ML data engineering**.
+```text
+82 → 0.82
+```
 
-**NumPy Fundamentals: Theory ✅ | Hands-on ✅**
+require floating-point representation.
 
-**Vectorization & Boolean Masking: Theory ✅ | Hands-on ✅**
+Use:
 
-**Multidimensional Arrays & Axis: Fundamentals ✅ | Hands-on ✅**
+```python
+normalized = metrics.astype(float)
+```
 
-**Next: Pandas — DataFrames, Real Tabular Data & Data Processing ⭐⭐⭐⭐⭐**
+before assigning fractional values.
+
+---
+
+# 🚀 MLOps Takeaway
+
+NumPy itself is not the MLOps platform.
+
+It is one of the numerical foundations underneath the ML ecosystem.
+
+Our path is:
+
+```text
+Raw Data
+   ↓
+Pandas
+   ↓
+Numerical Features
+   ↓
+NumPy-like structures
+   ↓
+Scikit-learn
+   ↓
+Model
+   ↓
+MLOps Lifecycle
+```
+
+As an MLOps engineer, the goal is not to become a NumPy specialist.
+
+The goal is to be able to look at numerical ML code and confidently understand:
+
+```text
+What is the shape?
+
+What are the samples?
+
+What are the features?
+
+What is being filtered?
+
+What transformation is being applied?
+
+Which axis is being aggregated?
+
+Does the resulting shape make sense?
+```
+
+Those questions are much more important than memorizing the entire NumPy API.
+
+---
+
+# 🏆 Quick Revision Cheat Sheet
+
+```python
+# Create
+a = np.array([1, 2, 3])
+
+# Inspect
+a.shape
+a.ndim
+a.size
+a.dtype
+
+# 2D indexing
+metrics[row, column]
+
+# All rows, one column
+metrics[:, 0]
+
+# One row, all columns
+metrics[0, :]
+
+# Multiple columns
+metrics[:, 0:2]
+
+# Boolean condition
+metrics[:, 0] > 80
+
+# Filter rows
+metrics[
+    metrics[:, 0] > 80
+]
+
+# Multiple conditions
+metrics[
+    (metrics[:, 0] > 80)
+    &
+    (metrics[:, 2] > 300)
+]
+
+# Aggregation
+np.mean(metrics[:, 0])
+np.max(metrics[:, 0])
+np.min(metrics[:, 2])
+np.std(metrics[:, 2])
+
+# Aggregate per column
+np.mean(metrics, axis=0)
+
+# Aggregate per row
+np.mean(metrics, axis=1)
+
+# Count condition
+np.sum(metrics[:, 0] > 80)
+
+# Percentage / proportion
+np.mean(metrics[:, 0] > 80)
+
+# Reshape
+data.reshape(3, 4)
+
+# Infer dimension
+data.reshape(3, -1)
+
+# Independent floating-point transformation
+normalized = metrics.astype(float)
+
+normalized[:, 0] /= 100
+normalized[:, 1] /= 100
+normalized[:, 2] /= 1000
+```
+
+---
+
+# 🎓 NumPy Revision Status
+
+```text
+Arrays                       ✅
+shape / ndim / size / dtype  ✅
+Indexing                     ✅
+Slicing                      ✅
+2D Arrays                    ✅
+Vectorization                ✅
+Boolean Masking              ✅
+Multiple Conditions          ✅
+Aggregations                 ✅
+Axis                         ✅
+Counting / Percentages       ✅
+Reshape                      ✅
+Basic Broadcasting           ✅
+Array Transformation         ✅
+NumPy → ML Mental Model      ✅
+```
+
+## **NumPy prerequisite for the MLOps journey: COMPLETE ✅**
+
+Next:
+
+```text
+NUMPY ✅
+   ↓
+PANDAS — DAY 1
+   ↓
+Series / DataFrame
+Inspection
+Selection
+Filtering
+Sorting
+Transformation
+```
