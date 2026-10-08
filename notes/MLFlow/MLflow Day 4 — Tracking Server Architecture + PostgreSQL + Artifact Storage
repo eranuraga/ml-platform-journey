@@ -1,0 +1,1385 @@
+# 📒 MLflow Day 4 — Tracking Server Architecture, PostgreSQL & Artifact Storage
+
+## 🎯 Objective
+
+Understand how MLflow works as a centralized service and how its components interact in a production-style architecture.
+
+The goal is to move from:
+
+```text
+Training Script
+      ↓
+Local MLflow
+      ↓
+Local Storage
+```
+
+to:
+
+```text
+Training Applications
+        ↓
+MLflow Tracking Server
+        │
+        ├── PostgreSQL
+        │      ↓
+        │   Metadata
+        │
+        └── Artifact Store
+               ↓
+          Model Files
+```
+
+By the end, we should understand:
+
+- MLflow Client vs Tracking Server.
+- Backend Store vs Artifact Store.
+- PostgreSQL integration.
+- Remote experiment tracking.
+- Artifact storage architectures.
+- Failure domains and troubleshooting.
+- Database migrations.
+
+**Important:** PostgreSQL-backed MLflow is production-style architecture, but PostgreSQL alone does not make MLflow fully production-grade.
+
+---
+
+# 1. Revisiting Days 1–3
+
+Our MLflow journey so far:
+
+```text
+Day 1
+Experiment Tracking
+      ↓
+Experiments / Runs
+Parameters / Metrics / Artifacts
+
+Day 2
+MLflow Model
+      ↓
+Flavors / Signature
+Input Example / Dependencies
+
+Day 3
+Model Registry
+      ↓
+Registered Models
+Versions / Aliases
+Candidate / Champion
+```
+
+Now we ask:
+
+> Where does MLflow store all this information, and how can multiple engineers access it reliably?
+
+This is the purpose of Day 4.
+
+---
+
+# 2. Why Do We Need a Centralized MLflow Server? ⭐⭐⭐⭐⭐
+
+Our initial setup was suitable for one engineer.
+
+```text
+Laptop
+   │
+   ├── train.py
+   │
+   ├── MLflow
+   │
+   └── Local Tracking Storage
+```
+
+But imagine:
+
+```text
+100 ML Engineers
+500 Experiments
+20,000 Runs
+2,000 Models
+```
+
+Different engineers and training pipelines need to access the same experiments, metrics, models and registry.
+
+We need a shared tracking service.
+
+### Architecture
+
+```text
+Engineer A ──────┐
+Engineer B ──────┤
+Airflow ─────────┤
+Kubeflow ────────┼──→ MLflow Tracking Server
+CI/CD ───────────┤
+Training Jobs ───┘
+```
+
+### Benefits
+
+- Centralized experiment tracking.
+- Shared model registry.
+- Consistent metadata storage.
+- Collaboration between ML engineers.
+- Centralized access control.
+- Better operational management.
+
+**Mental Model:**
+
+```text
+Local MLflow
+     ↓
+Individual Experimentation
+
+Centralized MLflow
+     ↓
+Shared ML Platform Service
+```
+
+---
+
+# 3. MLflow Production Architecture ⭐⭐⭐⭐⭐
+
+The three most important components are:
+
+1. MLflow Tracking Server.
+2. Backend Store.
+3. Artifact Store.
+
+```text
+                  ML Engineers
+                       │
+                       ▼
+                 MLflow Client
+                       │
+                       │ HTTP/HTTPS
+                       ▼
+              MLflow Tracking Server
+                       │
+              ┌────────┴────────┐
+              ▼                 ▼
+         Backend Store      Artifact Store
+              │                 │
+          PostgreSQL        Object Storage
+              │                 │
+              ▼                 ▼
+        Experiments            Models
+        Runs                   Plots
+        Parameters             Reports
+        Metrics                Files
+        Tags
+        Registry Metadata
+```
+
+### Mental Model
+
+```text
+Tracking Server
+      ↓
+API / Service Layer
+
+Backend Store
+      ↓
+Structured Metadata
+
+Artifact Store
+      ↓
+Actual Files
+```
+
+This is the most important architecture diagram from Day 4.
+
+---
+
+# 4. MLflow Client ⭐⭐⭐⭐⭐
+
+Our training code acts as an MLflow client.
+
+Example:
+
+```python
+import mlflow
+
+mlflow.log_param(
+    "max_iter",
+    1000
+)
+
+mlflow.log_metric(
+    "accuracy",
+    0.91
+)
+```
+
+Previously, MLflow could write to local tracking storage.
+
+Now the client sends tracking operations to a remote server.
+
+### Configure Tracking URI
+
+```python
+mlflow.set_tracking_uri(
+    "http://127.0.0.1:5000"
+)
+```
+
+Or through an environment variable:
+
+```bash
+export MLFLOW_TRACKING_URI=http://127.0.0.1:5000
+```
+
+### What is `MLFLOW_TRACKING_URI`?
+
+It tells the MLflow client where to send tracking requests.
+
+```text
+train.py
+    ↓
+MLFLOW_TRACKING_URI
+    ↓
+http://127.0.0.1:5000
+    ↓
+MLflow Tracking Server
+```
+
+### Important
+
+The same training code can use different tracking servers without rewriting its model-training logic.
+
+**Mental Model:**
+
+```text
+Training Code
+      ↓
+MLflow Client
+      ↓
+Tracking URI
+      ↓
+MLflow Server
+```
+
+---
+
+# 5. MLflow Tracking Server ⭐⭐⭐⭐⭐
+
+The Tracking Server provides the central service interface for MLflow.
+
+It handles operations such as:
+
+```text
+Create Experiment
+Start Run
+Log Parameters
+Log Metrics
+Set Tags
+Query Runs
+Register Models
+Resolve Model Versions
+```
+
+It also provides the MLflow web UI.
+
+### Architecture
+
+```text
+MLflow Client
+      │
+      │ HTTP
+      ▼
+MLflow Tracking Server
+      │
+      ├── Backend Store
+      │
+      └── Artifact Store
+```
+
+The Tracking Server coordinates access to tracking and registry information.
+
+### Important
+
+The server process itself should not be the only place where important persistent data lives.
+
+Persistent state should be maintained in shared durable stores.
+
+This becomes important when we introduce multiple MLflow instances for high availability.
+
+---
+
+# 6. Backend Store ⭐⭐⭐⭐⭐
+
+The Backend Store contains structured tracking and registry metadata.
+
+For a production-style deployment, PostgreSQL is a common choice.
+
+### What goes into PostgreSQL?
+
+```text
+PostgreSQL
+    │
+    ├── Experiments
+    ├── Run IDs
+    ├── Parameters
+    ├── Metrics
+    ├── Tags
+    ├── Registered Models
+    ├── Model Versions
+    ├── Aliases
+    └── Artifact Location Metadata
+```
+
+Example:
+
+```text
+Run ID        = abc123
+max_iter      = 1000
+accuracy      = 0.91
+recall        = 0.85
+model_version = 2
+```
+
+These are structured metadata records.
+
+### Mental Model
+
+```text
+Backend Store
+      ↓
+What happened?
+Which run?
+Which model?
+Which version?
+Where are its artifacts?
+```
+
+---
+
+# 7. Why PostgreSQL Instead of Local Storage? ⭐⭐⭐⭐⭐
+
+For development, local tracking storage is convenient.
+
+But a shared MLflow platform has different requirements.
+
+```text
+Engineer A ──┐
+Engineer B ──┤
+Engineer C ──┼──→ MLflow Server
+Airflow ─────┤           │
+Kubeflow ────┘           ▼
+                     PostgreSQL
+```
+
+### PostgreSQL Advantages
+
+- Concurrent database operations.
+- Transaction management.
+- Centralized metadata.
+- Backup and recovery support.
+- Replication and HA options.
+- Monitoring and operational tooling.
+- Suitable for shared production deployments.
+
+### Important Distinction
+
+SQLite is useful for local development and smaller deployments.
+
+PostgreSQL is generally more appropriate for higher-concurrency shared MLflow environments.
+
+**Mental Model:**
+
+```text
+SQLite
+    ↓
+Local Development / Small Deployments
+
+PostgreSQL
+    ↓
+Shared Production-Style Backend
+```
+
+PostgreSQL does not automatically provide HA. Replication, failover, backups and monitoring still need to be designed.
+
+---
+
+# 8. Artifact Store ⭐⭐⭐⭐⭐
+
+The Artifact Store contains files produced by MLflow runs.
+
+Examples:
+
+```text
+Artifact Store
+      │
+      ├── model.pkl
+      ├── MLmodel
+      ├── requirements.txt
+      ├── evaluation.json
+      ├── confusion_matrix.png
+      └── training_report.html
+```
+
+For production, object storage is commonly used.
+
+Examples:
+
+```text
+Amazon S3
+OCI Object Storage
+Azure Blob Storage
+Google Cloud Storage
+MinIO
+```
+
+### Why separate artifact storage?
+
+Imagine a model file is 5 GB.
+
+Should we store it directly in PostgreSQL?
+
+Normally, no.
+
+PostgreSQL is being used for structured metadata.
+
+Object storage is better suited to storing large model files and other artifacts.
+
+### Mental Model
+
+```text
+PostgreSQL
+      ↓
+Metadata / References
+
+Object Storage
+      ↓
+Actual Model and Artifact Files
+```
+
+---
+
+# 9. Backend Store vs Artifact Store ⭐⭐⭐⭐⭐
+
+This distinction is essential.
+
+| Information | Storage |
+|---|---|
+| Experiment ID | PostgreSQL |
+| Run ID | PostgreSQL |
+| Accuracy | PostgreSQL |
+| Recall | PostgreSQL |
+| `max_iter` | PostgreSQL |
+| Registered Model | PostgreSQL |
+| Model Version | PostgreSQL |
+| Champion Alias | PostgreSQL |
+| Model File | Artifact Store |
+| Evaluation JSON | Artifact Store |
+| Confusion Matrix PNG | Artifact Store |
+| Serialized Pipeline | Artifact Store |
+
+### Example
+
+Suppose we have:
+
+```text
+Registered Model:
+sre-incident-predictor
+
+Version:
+12
+
+Alias:
+champion
+```
+
+PostgreSQL contains the relevant registry metadata and artifact references.
+
+The actual model files live in artifact storage.
+
+```text
+PostgreSQL
+    ↓
+champion → Version 12
+    ↓
+Artifact Location
+    ↓
+Object Storage
+    ↓
+Actual Model Files
+```
+
+**Important Lesson:**
+
+> Metadata existing does not guarantee that the referenced artifact is available.
+
+---
+
+# 10. Running PostgreSQL Locally with Docker ⭐⭐⭐⭐
+
+For our Day 4 lab, we used Docker to simulate a separate PostgreSQL service.
+
+```bash
+docker run \
+  --name mlflow-postgres \
+  -e POSTGRES_USER=mlflow \
+  -e POSTGRES_PASSWORD=mlflow \
+  -e POSTGRES_DB=mlflow \
+  -p 127.0.0.1:5432:5432 \
+  -v mlflow-pgdata:/var/lib/postgresql \
+  -d postgres:18
+```
+
+### Explanation
+
+```text
+POSTGRES_USER
+    ↓
+Database Username
+
+POSTGRES_PASSWORD
+    ↓
+Database Password
+
+POSTGRES_DB
+    ↓
+Database Name
+
+5432
+    ↓
+PostgreSQL Port
+```
+
+The named volume provides persistent database storage across container recreation, provided the volume is retained.
+
+### Important
+
+The credentials above are only for local learning.
+
+In production:
+
+- Use a secrets manager.
+- Avoid hardcoded passwords.
+- Restrict database network access.
+- Use a supported and tested PostgreSQL version.
+- Configure backups and HA.
+
+### Verify PostgreSQL
+
+```bash
+docker ps
+```
+
+Check container logs:
+
+```bash
+docker logs mlflow-postgres
+```
+
+---
+
+# 11. PostgreSQL Connection URI ⭐⭐⭐⭐⭐
+
+MLflow needs a connection string to reach PostgreSQL.
+
+Example:
+
+```text
+postgresql+psycopg2://mlflow:mlflow@127.0.0.1:5432/mlflow
+```
+
+Breakdown:
+
+```text
+postgresql+psycopg2://
+          ↓
+Database Dialect + Driver
+
+mlflow
+          ↓
+Username
+
+mlflow
+          ↓
+Password
+
+127.0.0.1
+          ↓
+Database Host
+
+5432
+          ↓
+Database Port
+
+mlflow
+          ↓
+Database Name
+```
+
+### Mental Model
+
+```text
+Database URI
+     ↓
+How MLflow connects
+to its metadata database
+```
+
+---
+
+# 12. PostgreSQL Python Driver
+
+MLflow needs an appropriate database driver.
+
+For our local exercise:
+
+```bash
+pip install psycopg2-binary
+```
+
+The driver allows Python database tooling to communicate with PostgreSQL.
+
+For a production deployment, use an approved and maintained driver installation strategy.
+
+---
+
+# 13. Starting MLflow with PostgreSQL ⭐⭐⭐⭐⭐
+
+Previously:
+
+```bash
+mlflow server
+```
+
+Now we explicitly configure the backend database.
+
+For a local lab:
+
+```bash
+export MLFLOW_DB_PASSWORD=mlflow
+
+mlflow server \
+  --backend-store-uri \
+  "postgresql+psycopg2://mlflow:${MLFLOW_DB_PASSWORD}@127.0.0.1:5432/mlflow" \
+  --artifacts-destination ./mlartifacts \
+  --host 127.0.0.1 \
+  --port 5000
+```
+
+### Important Options
+
+**`--backend-store-uri`**
+
+Tells MLflow where to store tracking and registry metadata.
+
+**`--artifacts-destination`**
+
+Configures the artifact destination used by the server when proxying artifact access.
+
+**`--host`**
+
+Specifies the server's listening address.
+
+**`--port`**
+
+Specifies the listening port.
+
+### Architecture
+
+```text
+train.py
+    │
+    │ HTTP
+    ▼
+MLflow Server :5000
+    │
+    ├── PostgreSQL :5432
+    │      ↓
+    │   Metadata
+    │
+    └── Local Artifact Directory
+           ↓
+        Model Files
+```
+
+**Important:** Local artifact storage is suitable for this lab, not a durable multi-instance production design.
+
+For production, we would use shared durable artifact storage.
+
+---
+
+# 14. Connecting the Training Script to the Server ⭐⭐⭐⭐⭐
+
+Our training script now becomes a client of the MLflow server.
+
+```python
+import mlflow
+
+mlflow.set_tracking_uri(
+    "http://127.0.0.1:5000"
+)
+
+mlflow.set_experiment(
+    "sre-incident-predictor"
+)
+```
+
+Then:
+
+```python
+with mlflow.start_run():
+
+    mlflow.log_param(
+        "max_iter",
+        1000
+    )
+
+    mlflow.log_metric(
+        "accuracy",
+        0.91
+    )
+```
+
+### What changed?
+
+Our training logic did not need to change.
+
+Only the tracking destination changed.
+
+```text
+Training Application
+        ↓
+MLflow Client
+        ↓
+HTTP Request
+        ↓
+MLflow Tracking Server
+        ↓
+PostgreSQL
+```
+
+**Mental Model:**
+
+> The training application does not need to know the internal details of PostgreSQL or artifact storage. It interacts with the configured MLflow tracking service.
+
+---
+
+# 15. Verifying PostgreSQL Is Being Used
+
+We should not simply assume MLflow is writing metadata to PostgreSQL.
+
+Connect to the database:
+
+```bash
+docker exec -it mlflow-postgres \
+  psql -U mlflow -d mlflow
+```
+
+List tables:
+
+```sql
+\dt
+```
+
+We should see MLflow-created database tables after initialization.
+
+To exit:
+
+```sql
+\q
+```
+
+### What does this prove?
+
+```text
+MLflow Server
+      ↓
+PostgreSQL
+      ↓
+Tracking Metadata Persisted
+```
+
+This confirms that the configured database contains MLflow schema objects.
+
+We can further verify by creating a run and querying it through the MLflow UI/API.
+
+---
+
+# 16. Artifact Storage Architecture ⭐⭐⭐⭐⭐
+
+MLflow supports different artifact access patterns.
+
+Two important ones are:
+
+1. Server-proxied artifact access.
+2. Direct client-to-storage access.
+
+## Pattern A — MLflow Proxies Artifacts
+
+```text
+Training Client
+      │
+      ▼
+MLflow Server
+      │
+      ▼
+Object Storage
+```
+
+The client communicates with the MLflow server for artifact operations.
+
+The server handles access to the configured artifact destination.
+
+### Advantages
+
+- Centralized artifact access.
+- Clients do not necessarily need direct object-storage credentials.
+- Easier credential management for training clients.
+
+### Tradeoffs
+
+- Artifact traffic passes through MLflow.
+- MLflow server capacity and bandwidth become relevant.
+- Large artifact uploads/downloads can increase server load.
+
+---
+
+# 17. Pattern B — Direct Artifact Access
+
+```text
+Training Client
+      │
+      ├────────→ MLflow Server
+      │             ↓
+      │          Metadata
+      │
+      └────────→ Object Storage
+                    ↓
+                 Artifacts
+```
+
+The client communicates with object storage directly for artifact operations.
+
+### Advantages
+
+- Artifact traffic can bypass MLflow.
+- Large transfers do not necessarily consume MLflow server bandwidth.
+- Object storage can handle artifact traffic directly.
+
+### Tradeoffs
+
+- Clients need appropriate storage access.
+- Credential distribution and permissions become more complex.
+- Network access to object storage must be available.
+
+### Mental Model
+
+```text
+Proxied Artifacts
+      ↓
+Client → MLflow → Storage
+
+Direct Artifacts
+      ↓
+Client → Storage
+```
+
+**Important:** The chosen architecture affects IAM, networking, scaling and troubleshooting.
+
+---
+
+# 18. PostgreSQL vs Artifact Store Failure Domains ⭐⭐⭐⭐⭐
+
+This is one of the most important SRE concepts from Day 4.
+
+We have three major failure domains:
+
+```text
+MLflow Server
+PostgreSQL
+Artifact Storage
+```
+
+Each failure has different symptoms.
+
+---
+
+# 19. Failure Scenario A — MLflow Server Unavailable
+
+```text
+Training Client     Healthy
+MLflow Server       DOWN
+PostgreSQL          Healthy
+Artifact Store      Healthy
+```
+
+### What happens?
+
+The client cannot reach the MLflow tracking API.
+
+Operations such as:
+
+```python
+mlflow.log_metric(...)
+```
+
+may fail.
+
+### What would we investigate?
+
+- MLflow process/container health.
+- Server logs.
+- Network connectivity.
+- Listening port.
+- Load balancer routing.
+- DNS and firewall rules.
+
+### Important
+
+The model-training computation itself may still be capable of running, but whether the overall training pipeline continues depends on how tracking failures are handled.
+
+---
+
+# 20. Failure Scenario B — PostgreSQL Unavailable
+
+```text
+MLflow Server       Healthy
+PostgreSQL          DOWN
+Artifact Store      Healthy
+```
+
+### What happens?
+
+The MLflow server process may still be running.
+
+But operations requiring metadata can fail.
+
+Examples:
+
+```text
+Create Experiment
+Start Run
+Log Parameters
+Log Metrics
+Query Runs
+Resolve Registry Aliases
+```
+
+### Important
+
+Artifact files may still exist in object storage.
+
+But MLflow may be unable to resolve the metadata needed to locate them.
+
+### Mental Model
+
+```text
+PostgreSQL DOWN
+      ↓
+Metadata Operations Fail
+      ↓
+Tracking / Registry Degraded
+```
+
+---
+
+# 21. Failure Scenario C — Artifact Store Unavailable
+
+```text
+MLflow Server       Healthy
+PostgreSQL          Healthy
+Artifact Store      DOWN
+```
+
+### What happens?
+
+Some metadata operations may continue working.
+
+For example:
+
+```text
+Experiment Exists
+Run Exists
+Accuracy Visible
+Registry Version Visible
+```
+
+But artifact operations can fail:
+
+```text
+Model Upload
+Model Download
+Evaluation Report Download
+Artifact Retrieval
+```
+
+### Mental Model
+
+```text
+Artifact Store DOWN
+      ↓
+Metadata May Remain Available
+      ↓
+Model Files Cannot Be Retrieved
+```
+
+### Important
+
+A model already loaded into memory by an inference service may continue serving predictions.
+
+However, new deployments, restarts or model reloads may fail if they need to download the artifact again.
+
+---
+
+# 22. Failure Domain Comparison
+
+| Component Failure | Likely Impact |
+|---|---|
+| MLflow Server | Tracking API unavailable |
+| PostgreSQL | Metadata and registry operations fail |
+| Artifact Store | Model/artifact upload or download fails |
+| Network | Clients cannot reach required services |
+| Credentials/IAM | Access denied despite healthy infrastructure |
+
+**Important Lesson:**
+
+> A healthy MLflow server process does not guarantee a healthy MLflow platform.
+
+We must monitor the entire dependency chain.
+
+---
+
+# 23. Database Migrations ⭐⭐⭐⭐
+
+MLflow evolves over time.
+
+New versions may introduce changes to the backend database schema.
+
+Therefore, upgrading MLflow can require a database migration.
+
+Example:
+
+```bash
+mlflow db upgrade \
+  "postgresql+psycopg2://mlflow:password@127.0.0.1:5432/mlflow"
+```
+
+The password above is illustrative. In real environments, use secure credential handling.
+
+### Production Upgrade Mental Model
+
+```text
+New MLflow Version
+        ↓
+Compatibility Check
+        ↓
+Database Backup
+        ↓
+Test Migration
+        ↓
+Run Required Migration
+        ↓
+Deploy New MLflow Version
+        ↓
+Validate Tracking / Registry
+```
+
+### Why is this important?
+
+A database schema migration may not be safely reversible simply by rolling back the MLflow application version.
+
+Therefore:
+
+- Back up the database.
+- Test migrations in staging.
+- Review release notes.
+- Plan downtime or rollout coordination.
+- Validate after upgrading.
+
+We cover production upgrades in more detail on Day 5.
+
+---
+
+# 24. Production Architecture vs Local Lab
+
+Our local lab:
+
+```text
+Mac
+ │
+ ├── train.py
+ │
+ ├── MLflow Server
+ │
+ ├── PostgreSQL Container
+ │
+ └── Local Artifact Directory
+```
+
+Production architecture:
+
+```text
+                  ML Engineers
+                       │
+                       ▼
+                 Load Balancer
+                       │
+              ┌────────┴────────┐
+              ▼                 ▼
+         MLflow Server 1   MLflow Server 2
+              │                 │
+              └────────┬────────┘
+                       │
+              ┌────────┴────────┐
+              ▼                 ▼
+        PostgreSQL HA      Object Storage
+              │                 │
+          Metadata           Artifacts
+```
+
+Production also requires:
+
+```text
+Authentication
+Authorization
+TLS
+Secrets
+Backups
+Monitoring
+High Availability
+Disaster Recovery
+```
+
+Those are the main topics for Day 5.
+
+---
+
+# 25. Common Mistakes
+
+### Mistake 1 — PostgreSQL Stores Model Files
+
+Incorrect:
+
+```text
+PostgreSQL
+    ↓
+Everything, including large model files
+```
+
+Correct:
+
+```text
+PostgreSQL
+    ↓
+Metadata
+
+Artifact Store
+    ↓
+Model Files
+```
+
+### Mistake 2 — MLflow Server Healthy Means Platform Healthy
+
+Incorrect:
+
+```text
+MLflow /health = 200
+        ↓
+Everything Healthy
+```
+
+Correct:
+
+```text
+MLflow API Healthy
+        +
+PostgreSQL Healthy
+        +
+Artifact Access Working
+        +
+Registry Operations Working
+        ↓
+Functional Platform Health
+```
+
+### Mistake 3 — PostgreSQL Automatically Makes MLflow HA
+
+PostgreSQL provides a durable shared backend, but HA requires replication, failover and appropriate operational configuration.
+
+### Mistake 4 — Local Artifacts Are Production-Ready
+
+Local artifact directories are useful for development.
+
+Shared production deployments generally need durable storage accessible to all relevant MLflow instances.
+
+### Mistake 5 — All Artifact Traffic Always Passes Through MLflow
+
+MLflow supports both proxied and direct artifact access patterns.
+
+The chosen configuration determines the actual data path.
+
+### Mistake 6 — Application Rollback Always Reverses DB Migrations
+
+A schema migration can require a separate recovery procedure.
+
+---
+
+# 26. MLOps / SRE Connection ⭐⭐⭐⭐⭐
+
+Day 1–3 focused primarily on the ML engineer's perspective.
+
+```text
+Train
+  ↓
+Track
+  ↓
+Log Model
+  ↓
+Register
+  ↓
+Promote
+```
+
+Day 4 introduces the platform engineering perspective.
+
+```text
+MLflow Client
+      ↓
+Tracking Server
+      ↓
+PostgreSQL + Artifact Storage
+      ↓
+Availability
+Reliability
+Scalability
+Security
+Recovery
+```
+
+For an MLOps/SRE engineer, important questions include:
+
+- Can multiple engineers use the platform concurrently?
+- Where does persistent state live?
+- What happens when PostgreSQL fails?
+- What happens when object storage fails?
+- How do we identify which dependency is broken?
+- Can a registered model still be loaded?
+- How do we upgrade without corrupting metadata?
+- How do we prevent a single component from taking down the entire platform?
+
+**Important Lesson:**
+
+> MLflow is not only a Python library. In a shared enterprise environment, it is a platform service with databases, storage, networking, security and reliability requirements.
+
+---
+
+# 27. Quick Revision Cheat Sheet
+
+```bash
+# Start PostgreSQL locally
+docker run \
+  --name mlflow-postgres \
+  -e POSTGRES_USER=mlflow \
+  -e POSTGRES_PASSWORD=mlflow \
+  -e POSTGRES_DB=mlflow \
+  -p 127.0.0.1:5432:5432 \
+  -v mlflow-pgdata:/var/lib/postgresql \
+  -d postgres:18
+
+# Install PostgreSQL driver
+pip install psycopg2-binary
+
+# Start MLflow with PostgreSQL
+mlflow server \
+  --backend-store-uri \
+  "postgresql+psycopg2://mlflow:mlflow@127.0.0.1:5432/mlflow" \
+  --artifacts-destination ./mlartifacts \
+  --host 127.0.0.1 \
+  --port 5000
+
+# Inspect PostgreSQL tables
+docker exec -it mlflow-postgres \
+  psql -U mlflow -d mlflow
+```
+
+Inside PostgreSQL:
+
+```sql
+\dt
+```
+
+Python client:
+
+```python
+import mlflow
+
+# Connect to tracking server
+mlflow.set_tracking_uri(
+    "http://127.0.0.1:5000"
+)
+
+# Select experiment
+mlflow.set_experiment(
+    "sre-incident-predictor"
+)
+
+# Start run
+with mlflow.start_run():
+
+    mlflow.log_param(
+        "max_iter",
+        1000
+    )
+
+    mlflow.log_metric(
+        "accuracy",
+        0.91
+    )
+```
+
+---
+
+# 28. Interview Revision Questions
+
+1. What is an MLflow Tracking Server?
+2. What is the difference between MLflow Client and Tracking Server?
+3. What is `MLFLOW_TRACKING_URI`?
+4. What is a Backend Store?
+5. Why use PostgreSQL for MLflow?
+6. What information is stored in PostgreSQL?
+7. What is an Artifact Store?
+8. Why shouldn't large model files be stored in PostgreSQL?
+9. What is the difference between proxied and direct artifact access?
+10. What happens if MLflow Server is unavailable?
+11. What happens if PostgreSQL is unavailable?
+12. What happens if artifact storage is unavailable?
+13. Can MLflow metadata remain available when model downloads fail?
+14. Why do database migrations matter during MLflow upgrades?
+15. Why is PostgreSQL-backed MLflow not automatically production-grade?
+16. How would you troubleshoot a healthy MLflow API with failing model downloads?
+
+---
+
+# 29. Day 4 Definition of Done
+
+- [x] Understood centralized MLflow architecture.
+- [x] Understood MLflow Client vs Tracking Server.
+- [x] Understood `MLFLOW_TRACKING_URI`.
+- [x] Understood Backend Store.
+- [x] Understood PostgreSQL integration.
+- [x] Understood Artifact Store.
+- [x] Distinguished metadata from artifacts.
+- [x] Understood remote experiment tracking.
+- [x] Learned the local PostgreSQL-backed setup.
+- [x] Understood proxied vs direct artifact access.
+- [x] Understood major failure domains.
+- [x] Understood database migration considerations.
+
+## MLflow Day 4: COMPLETE ✅
+
+### The One Sentence to Remember
+
+**The MLflow Tracking Server provides the API and coordination layer, PostgreSQL stores structured experiment and registry metadata, and artifact storage holds the actual model files and other generated artifacts.**
+
+---
+
+### Next: MLflow Day 5
+
+Production Hardening, High Availability, Authentication, Authorization, TLS, PostgreSQL Reliability, Observability, SLIs/SLOs, Backup, Disaster Recovery and Upgrade Strategies.

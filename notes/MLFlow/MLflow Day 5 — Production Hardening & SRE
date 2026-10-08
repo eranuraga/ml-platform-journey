@@ -1,0 +1,1441 @@
+# 📒 MLflow Day 5 — Production Hardening, Reliability & SRE
+
+## 🎯 Objective
+
+Understand how to operate MLflow as a **secure, highly available, observable and recoverable enterprise platform**.
+
+The goal is to move from:
+
+```text
+MLflow Tracking Server
+        ↓
+PostgreSQL + Artifact Storage
+```
+
+to:
+
+```text
+Enterprise MLflow Platform
+        │
+        ├── High Availability
+        ├── Authentication / Authorization
+        ├── TLS / Secrets
+        ├── PostgreSQL Reliability
+        ├── Artifact Durability
+        ├── Observability / SLIs / SLOs
+        ├── Backup / Disaster Recovery
+        └── Safe Upgrades
+```
+
+**Important:** Running MLflow with PostgreSQL does not automatically make it production-grade.
+
+---
+
+# 1. Revisiting Days 1–4
+
+Our MLflow journey:
+
+```text
+Day 1 — Experiment Tracking
+    ↓
+Experiments / Runs / Params / Metrics
+
+Day 2 — Model Packaging
+    ↓
+Flavors / Signatures / Input Examples
+
+Day 3 — Model Registry
+    ↓
+Versions / Aliases / Promotion / Rollback
+
+Day 4 — MLflow Architecture
+    ↓
+Tracking Server / PostgreSQL / Artifacts
+
+Day 5 — Production Hardening
+    ↓
+Reliability / Security / Observability / DR
+```
+
+Day 4 answered:
+
+> How does MLflow work as a centralized service?
+
+Day 5 answers:
+
+> How do we operate that service reliably for an engineering organization?
+
+---
+
+# 2. Enterprise MLflow Architecture ⭐⭐⭐⭐⭐
+
+Imagine:
+
+```text
+100 ML Engineers
+20,000 Training Runs / Month
+500 Registered Models
+99.9% Availability Target
+```
+
+A production-style architecture:
+
+```text
+                ML Engineers / Pipelines
+                          │
+                          ▼
+                  Identity / SSO
+                          │
+                          ▼
+                Load Balancer / TLS
+                          │
+             ┌────────────┼────────────┐
+             ▼            ▼            ▼
+         MLflow-1     MLflow-2     MLflow-3
+             │            │            │
+             └────────────┼────────────┘
+                          │
+                ┌─────────┴─────────┐
+                ▼                   ▼
+           PostgreSQL HA       Object Storage
+                │                   │
+           Metadata             Model Files
+           Registry             Reports
+           Metrics              Artifacts
+
+       + Monitoring / Logging / Alerting
+       + Secrets / RBAC / Audit Logging
+       + Backup / Disaster Recovery
+```
+
+All MLflow instances must use the same logical backend database and shared artifact storage.
+
+### Mental Model
+
+```text
+MLflow Instances
+       ↓
+Replaceable Application Layer
+
+PostgreSQL
+       ↓
+Persistent Metadata
+
+Object Storage
+       ↓
+Persistent Model Artifacts
+```
+
+**Important:** Application-tier HA is not complete platform HA. Every critical shared dependency needs its own availability and recovery strategy.
+
+---
+
+# 3. High Availability ⭐⭐⭐⭐⭐
+
+A single MLflow server creates a potential single point of failure.
+
+```text
+Training Client
+      ↓
+MLflow Server
+      ↓
+Server Fails
+      ↓
+Tracking Unavailable
+```
+
+We can run multiple MLflow instances behind a load balancer.
+
+```text
+                   Load Balancer
+                         │
+              ┌──────────┼──────────┐
+              ▼          ▼          ▼
+           MLflow-1   MLflow-2   MLflow-3
+              │          │          │
+              └──────────┼──────────┘
+                         ▼
+                  Shared Storage
+```
+
+### Why multiple instances?
+
+- High availability.
+- Horizontal scaling.
+- Rolling maintenance.
+- Reduced application-level single points of failure.
+- Better resilience during instance failures.
+
+### Production Considerations
+
+- Distribute instances across availability zones where possible.
+- Configure readiness and liveness checks.
+- Use a highly available load balancer.
+- Ensure sufficient capacity if one instance fails.
+- Keep persistent state in shared durable storage.
+
+### SRE Tradeoff
+
+Two instances may be enough for smaller workloads.
+
+Three instances provide more flexibility for maintenance and failures, but increase resource cost.
+
+**Mental Model:**
+
+> Multiple MLflow servers improve application availability, but do not protect against PostgreSQL or artifact-store outages.
+
+---
+
+# 4. PostgreSQL High Availability ⭐⭐⭐⭐⭐
+
+PostgreSQL stores MLflow's structured metadata.
+
+Examples:
+
+```text
+Experiments
+Run IDs
+Parameters
+Metrics
+Tags
+Registered Models
+Model Versions
+Aliases
+Artifact References
+```
+
+A production design might use:
+
+```text
+                    MLflow
+                       │
+                       ▼
+              PostgreSQL Endpoint
+                       │
+                       ▼
+                 Primary DB
+                  Read/Write
+                       │
+                       │ Replication
+                       ▼
+                  Standby DB
+```
+
+### Primary
+
+The active database instance handling writes and normally serving MLflow reads.
+
+### Standby / Replica
+
+Maintains replicated database state.
+
+It can be promoted during failover when supported by the HA configuration.
+
+### Important Clarification
+
+MLflow does not automatically distribute reads to PostgreSQL replicas simply because replicas exist.
+
+For our initial architecture:
+
+```text
+MLflow
+   ↓
+Stable Database Endpoint
+   ↓
+Current Writable Primary
+```
+
+The HA mechanism handles failover.
+
+### PostgreSQL Reliability Topics
+
+- Replication.
+- Automatic or controlled failover.
+- Connection pooling.
+- Connection limits.
+- Query latency.
+- Database storage.
+- Replication lag.
+- Backups.
+- Point-in-time recovery.
+
+### SRE Tradeoff
+
+Synchronous replication can reduce certain data-loss risks but may increase write latency.
+
+Asynchronous replication can reduce write latency but may permit data loss during failover.
+
+**Important:** Replication is not a replacement for backups.
+
+---
+
+# 5. Artifact Storage Reliability ⭐⭐⭐⭐⭐
+
+The Artifact Store contains actual files.
+
+Examples:
+
+```text
+model.pkl
+MLmodel
+requirements.txt
+evaluation.json
+confusion_matrix.png
+serialized_pipeline.pkl
+```
+
+Production deployments commonly use object storage.
+
+Examples:
+
+```text
+Amazon S3
+OCI Object Storage
+Azure Blob Storage
+Google Cloud Storage
+```
+
+### Architecture
+
+```text
+MLflow Registry
+      ↓
+Model Version 12
+      ↓
+Artifact URI
+      ↓
+Object Storage
+      ↓
+Actual Model Files
+```
+
+### Production Considerations
+
+- Object durability.
+- Storage availability.
+- IAM permissions.
+- Encryption and KMS permissions.
+- Object versioning.
+- Backup or replication.
+- Retention policies.
+- Capacity and cost.
+- Upload/download success rates.
+
+### Important Lesson
+
+> A model version existing in the Registry does not guarantee its artifact can be downloaded.
+
+---
+
+# 6. Authentication vs Authorization ⭐⭐⭐⭐⭐
+
+These concepts are related but different.
+
+## Authentication
+
+Answers:
+
+> Who are you?
+
+Examples:
+
+```text
+SSO
+Identity Provider
+Service Identity
+```
+
+## Authorization
+
+Answers:
+
+> What are you allowed to do?
+
+Examples:
+
+```text
+Create Experiment
+Log Run
+Register Model
+Promote Champion
+Delete Model Version
+```
+
+### Architecture
+
+```text
+User / Training Pipeline
+          ↓
+Authentication
+          ↓
+Identity Verified
+          ↓
+Authorization
+          ↓
+Allowed MLflow Operation
+```
+
+### Example Roles
+
+| Role | Responsibilities |
+|---|---|
+| ML Engineer | Train, log runs, register candidates |
+| Model Approver | Review and approve model promotion |
+| Release Pipeline | Perform authorized alias updates/deployments |
+| Platform Administrator | Operate and maintain MLflow |
+
+### Separation of Duties
+
+A data scientist who registers a candidate should not automatically have unrestricted permission to promote models.
+
+```text
+ML Engineer
+     ↓
+Register Candidate
+     ↓
+Quality Gates
+     ↓
+Approval
+     ↓
+Authorized Release Identity
+     ↓
+Promote Champion
+```
+
+**Important:** Quality gates determine whether a model qualifies for promotion. Authorization determines who may perform the promotion.
+
+The chosen MLflow authentication integration must actually enforce the intended permissions.
+
+---
+
+# 7. TLS, Secrets and Network Security ⭐⭐⭐⭐
+
+A production MLflow platform should protect communications and credentials.
+
+### TLS
+
+Encrypt communication between clients and MLflow.
+
+```text
+MLflow Client
+      ↓
+HTTPS
+      ↓
+MLflow Server
+```
+
+Backend connections should also be secured according to infrastructure requirements.
+
+### Secrets
+
+Do not hardcode:
+
+```text
+PostgreSQL Passwords
+Object Storage Credentials
+Access Tokens
+Encryption Keys
+```
+
+Use a suitable secrets-management mechanism.
+
+### Network Security
+
+- Restrict PostgreSQL access.
+- Restrict artifact-store access.
+- Use private networking where appropriate.
+- Apply least-privilege IAM policies.
+- Audit administrative and model-promotion actions.
+
+### Mental Model
+
+```text
+Authentication
+      ↓
+Who are you?
+
+Authorization
+      ↓
+What can you do?
+
+TLS
+      ↓
+Protect communication
+
+Secrets Management
+      ↓
+Protect credentials
+```
+
+---
+
+# 8. Observability ⭐⭐⭐⭐⭐
+
+A healthy MLflow server process does not necessarily mean the entire platform is healthy.
+
+We must monitor the complete dependency chain.
+
+```text
+Users / Pipelines
+       ↓
+Load Balancer
+       ↓
+MLflow Server
+       ↓
+PostgreSQL + Artifact Storage
+```
+
+### What Should We Monitor?
+
+| Layer | Metrics |
+|---|---|
+| MLflow API | Availability, request latency, HTTP errors, throughput |
+| PostgreSQL | Connections, query latency, locks, replication lag, storage |
+| Artifact Store | Upload/download success, latency, 403/5xx errors |
+| Registry | Model registration and alias-resolution success |
+| Infrastructure | CPU, memory, restarts, saturation |
+
+### Important
+
+Monitoring only:
+
+```text
+CPU
+Memory
+Pod Running
+HTTP /health = 200
+```
+
+is insufficient.
+
+We must monitor actual operations such as:
+
+```text
+Create Experiment
+Start Run
+Log Metrics
+Resolve Champion Alias
+Download Model
+```
+
+**Mental Model:**
+
+> Monitor whether users can successfully perform the operations the platform promises.
+
+---
+
+# 9. SLI vs SLO vs SLA ⭐⭐⭐⭐⭐
+
+## SLI — Service Level Indicator
+
+A measurable indicator of service behavior.
+
+Example:
+
+```text
+Successful Tracking Requests
+────────────────────────────
+Total Eligible Tracking Requests
+```
+
+## SLO — Service Level Objective
+
+The target for an SLI.
+
+Example:
+
+```text
+Tracking API Availability
+          ≥ 99.9%
+```
+
+over a defined measurement window.
+
+## SLA — Service Level Agreement
+
+A formal service commitment that may include consequences when targets are not met.
+
+### Example MLflow SLOs
+
+These are illustrative targets, not MLflow defaults.
+
+| Capability | Example SLO |
+|---|---|
+| Tracking API | 99.9% success |
+| Registry lookup | 99.9% success |
+| Artifact downloads | 99.9% success |
+| Registry latency | 99% under 500 ms |
+| Run creation | 99.9% success |
+
+### Mental Model
+
+```text
+SLI
+ ↓
+What are we measuring?
+
+SLO
+ ↓
+What target do we want?
+
+SLA
+ ↓
+What formal commitment exists?
+```
+
+---
+
+# 10. Error Budgets ⭐⭐⭐⭐
+
+Suppose we define:
+
+```text
+Availability SLO = 99.9%
+Measurement Window = 30 Days
+```
+
+The corresponding time-based unavailability allowance is:
+
+```text
+30 days = 43,200 minutes
+
+Allowed Unavailability
+= 43,200 × 0.001
+
+= 43.2 minutes
+```
+
+This is the time-based equivalent of a 99.9% availability objective.
+
+For a request-based SLO, the error budget is instead measured using eligible requests.
+
+### Why Error Budgets Matter
+
+If the platform consumes most of its error budget:
+
+- Investigate incidents.
+- Review reliability risks.
+- Prioritize corrective actions.
+- Reconsider risky deployments.
+- Apply the organization's error-budget policy.
+
+### Mental Model
+
+```text
+SLO
+  ↓
+Reliability Target
+  ↓
+Error Budget
+  ↓
+Allowed Failure Within Window
+```
+
+---
+
+# 11. Alerting Strategy ⭐⭐⭐⭐⭐
+
+Not every infrastructure metric should trigger a page.
+
+For example:
+
+```text
+MLflow CPU = 80%
+```
+
+does not automatically mean users are experiencing failures.
+
+We should prioritize user-impacting signals.
+
+### Example Alerts
+
+| Alert | Priority |
+|---|---|
+| Tracking API sustained failures | High |
+| Artifact downloads failing for production models | High |
+| Registry alias resolution failing | High |
+| PostgreSQL connection exhaustion | High |
+| PostgreSQL replication lag | Depends on severity |
+| Storage capacity approaching limit | Warning |
+
+### Important Lesson
+
+> Alerts should reflect actionable user impact or credible imminent risk, not arbitrary infrastructure thresholds alone.
+
+---
+
+# 12. Failure Isolation ⭐⭐⭐⭐⭐
+
+One of the most important Day 5 skills.
+
+Consider:
+
+```text
+MLflow Server       Healthy
+PostgreSQL          Healthy
+Registry            Working
+Artifact Downloads  Failing
+```
+
+Where should we investigate?
+
+Likely candidates:
+
+```text
+Object Storage
+IAM Permissions
+KMS Permissions
+Expired Credentials
+Artifact Proxy
+Network Connectivity
+Object Existence
+```
+
+### Important
+
+Do not immediately conclude that object storage is down.
+
+A healthy storage service may still reject requests because of permissions.
+
+### Troubleshooting Mental Model
+
+```text
+User Request
+     ↓
+DNS / Network
+     ↓
+Load Balancer
+     ↓
+MLflow Server
+     ↓
+Backend Dependency
+     ↓
+Operation Result
+```
+
+At each layer ask:
+
+1. Is the component reachable?
+2. Is the operation succeeding?
+3. What do logs show?
+4. What do metrics show?
+5. Did anything change recently?
+
+**Important Lesson:**
+
+> A symptom identifies where to investigate, not necessarily the root cause.
+
+---
+
+# 13. Backup Strategy ⭐⭐⭐⭐⭐
+
+Imagine the entire MLflow environment is lost.
+
+What must we recover?
+
+```text
+Production MLflow
+       │
+       ├── PostgreSQL Metadata
+       │
+       ├── Model Artifacts
+       │
+       ├── MLflow Configuration
+       │
+       ├── Infrastructure Definitions
+       │
+       └── Secrets / Identity Configuration
+```
+
+### PostgreSQL Backup
+
+Protects:
+
+```text
+Experiments
+Runs
+Metrics
+Parameters
+Registry Versions
+Aliases
+```
+
+### Artifact Backup
+
+Protects:
+
+```text
+Model Files
+Evaluation Reports
+Plots
+Serialized Pipelines
+```
+
+### Configuration Backup
+
+Protects or enables reconstruction of:
+
+```text
+MLflow Settings
+Storage Endpoints
+Infrastructure Configuration
+Network Policies
+Access Configuration
+```
+
+### Important
+
+> PostgreSQL metadata and model artifacts must be recoverable to a mutually consistent state.
+
+Restoring metadata without the corresponding artifacts may leave registered models unusable.
+
+---
+
+# 14. High Availability vs Backup ⭐⭐⭐⭐⭐
+
+These are different concepts.
+
+### High Availability
+
+Helps the service continue operating during certain failures.
+
+```text
+PostgreSQL Primary
+        ↓
+Standby
+        ↓
+Failover
+```
+
+### Backup
+
+Helps recover data after events such as:
+
+```text
+Accidental Deletion
+Data Corruption
+Destructive Changes
+Disaster
+```
+
+### Example
+
+Suppose an engineer accidentally deletes registry metadata.
+
+If the deletion replicates to the standby, both database instances may reflect the deletion.
+
+A standby is not necessarily a historical recovery point.
+
+### Mental Model
+
+```text
+HA
+ ↓
+Continue Operating During Failures
+
+Backup
+ ↓
+Recover Lost or Damaged Data
+```
+
+**Important:** Replication alone is not a backup strategy.
+
+---
+
+# 15. RPO vs RTO ⭐⭐⭐⭐⭐
+
+Two important disaster recovery objectives.
+
+## RPO — Recovery Point Objective
+
+Maximum acceptable data loss measured in time.
+
+Example:
+
+```text
+RPO = 15 minutes
+```
+
+Meaning:
+
+> Our recovery design should limit data loss to no more than the agreed 15-minute window.
+
+## RTO — Recovery Time Objective
+
+Maximum acceptable time to restore service.
+
+Example:
+
+```text
+RTO = 60 minutes
+```
+
+Meaning:
+
+> The recovery process should restore the required service capability within the agreed one-hour target.
+
+### Mental Model
+
+```text
+RPO
+ ↓
+How much data can we lose?
+
+RTO
+ ↓
+How long can recovery take?
+```
+
+Lower RPO/RTO targets generally require more automation, infrastructure investment and testing.
+
+---
+
+# 16. Disaster Recovery Workflow ⭐⭐⭐⭐⭐
+
+A production MLflow recovery procedure might look like:
+
+```text
+Disaster Declared
+        ↓
+Assess Impact
+        ↓
+Select Recovery Point
+        ↓
+Restore PostgreSQL
+        ↓
+Restore / Verify Artifacts
+        ↓
+Restore Configuration
+        ↓
+Start MLflow Servers
+        ↓
+Validate Tracking API
+        ↓
+Validate Registry
+        ↓
+Resolve Champion Alias
+        ↓
+Load Model
+        ↓
+Run Test Prediction
+        ↓
+Restore Normal Operations
+```
+
+The precise order depends on the environment.
+
+The important goal is to restore a consistent and usable MLflow platform.
+
+---
+
+# 17. Validating Disaster Recovery ⭐⭐⭐⭐⭐
+
+Restoring databases and storage is not enough.
+
+We must verify functionality.
+
+### Test 1 — Tracking
+
+Can we create a new experiment or run?
+
+### Test 2 — Registry
+
+Can we retrieve registered model versions and aliases?
+
+### Test 3 — Artifact Access
+
+Can we download a model artifact?
+
+### Test 4 — Model Loading
+
+```python
+import mlflow
+
+model = mlflow.pyfunc.load_model(
+    "models:/sre-incident-predictor@champion"
+)
+```
+
+### Test 5 — Prediction
+
+```python
+prediction = model.predict(
+    input_example
+)
+```
+
+This checks the end-to-end recovery path.
+
+```text
+MLflow API
+    ↓
+Registry Metadata
+    ↓
+Artifact Location
+    ↓
+Artifact Access
+    ↓
+Model Loading
+    ↓
+Prediction
+```
+
+**Important:** The test must use valid model input and a compatible inference environment.
+
+---
+
+# 18. Accidental Model Artifact Deletion ⭐⭐⭐⭐⭐
+
+This was one of our Day 5 exercises.
+
+Scenario:
+
+```text
+PostgreSQL          Healthy
+Registry            Healthy
+Champion Alias      Exists
+Model Artifact      Deleted
+```
+
+### What happens?
+
+The Registry may still show the model version.
+
+However, a new model-loading operation may fail because the artifact is missing.
+
+An inference process that already loaded the model into memory may continue serving until restart or reload.
+
+### Recovery
+
+1. Identify the model version.
+2. Locate its artifact URI.
+3. Check whether the object was deleted or became inaccessible.
+4. Restore from object versioning, protected backup or replica.
+5. Verify restored artifact integrity.
+6. Load the model.
+7. Execute a test prediction.
+
+### Why Restarting MLflow Doesn't Help
+
+Restarting MLflow does not recreate deleted files in external object storage.
+
+**Mental Model:**
+
+> Restarting a healthy application does not repair missing data in an external dependency.
+
+---
+
+# 19. Safe MLflow Upgrades ⭐⭐⭐⭐⭐
+
+MLflow versions may introduce:
+
+```text
+API Changes
+Dependency Changes
+Database Schema Changes
+Configuration Changes
+```
+
+Therefore, upgrading MLflow is not always as simple as updating a container image.
+
+### Safe Upgrade Workflow
+
+```text
+Review Release Notes
+        ↓
+Check Compatibility
+        ↓
+Backup PostgreSQL + Artifacts
+        ↓
+Test in Staging
+        ↓
+Plan Database Migration
+        ↓
+Upgrade MLflow
+        ↓
+Smoke Tests
+        ↓
+Monitor
+```
+
+### Database Migration
+
+Some upgrades require:
+
+```bash
+mlflow db upgrade <database-uri>
+```
+
+The exact migration procedure should follow the documentation for the MLflow version being deployed.
+
+### Important Production Lesson
+
+A database schema migration may not be reversible simply by rolling back the MLflow application image.
+
+Therefore:
+
+- Maintain tested backups.
+- Test migrations in staging.
+- Plan maintenance or rollout coordination.
+- Validate after upgrading.
+- Have a documented recovery plan.
+
+---
+
+# 20. Enterprise Architecture Challenge ⭐⭐⭐⭐⭐
+
+Our challenge:
+
+```text
+100 ML Engineers
+20,000 Training Runs / Month
+500 Registered Models
+99.9% Availability Target
+```
+
+We designed a shared MLflow platform.
+
+## Availability
+
+Use 2–3 MLflow instances behind a load balancer.
+
+Distribute instances across failure domains where possible.
+
+Use shared persistent storage.
+
+## Persistence
+
+Use PostgreSQL with HA/failover capabilities.
+
+Use object storage for model artifacts.
+
+Maintain backups for both.
+
+## Security
+
+Use SSO or an appropriate identity provider.
+
+Apply authorization policies for model registration and promotion.
+
+Protect credentials with secrets management.
+
+Use TLS and network restrictions.
+
+## Observability
+
+Monitor:
+
+```text
+Tracking API Success Rate
+Registry Operation Success
+Artifact Download Success
+PostgreSQL Health
+```
+
+Define SLIs/SLOs around user-facing operations.
+
+## Disaster Recovery
+
+Restore:
+
+```text
+PostgreSQL
+Artifacts
+Configuration
+```
+
+Then validate model loading and inference.
+
+## Upgrades
+
+Test compatibility and migrations in staging.
+
+Back up state before upgrading.
+
+Validate tracking, registry and artifact retrieval after deployment.
+
+---
+
+# 21. Common Mistakes
+
+### Mistake 1 — Multiple MLflow Servers Mean Complete HA
+
+Incorrect:
+
+```text
+3 MLflow Servers
+       ↓
+Fully Highly Available
+```
+
+Correct:
+
+```text
+Application HA
+      +
+Database HA
+      +
+Artifact Availability
+      +
+Network Reliability
+```
+
+### Mistake 2 — Health Endpoint Means Everything Works
+
+Incorrect:
+
+```text
+/health = 200
+      ↓
+Platform Healthy
+```
+
+Correct:
+
+```text
+Tracking Working
+Registry Working
+Artifact Downloads Working
+      ↓
+Functional Platform Health
+```
+
+### Mistake 3 — PostgreSQL Replication Replaces Backups
+
+Replication helps availability.
+
+Backups help recover lost or corrupted data.
+
+### Mistake 4 — SSO Automatically Enforces All Permissions
+
+Authentication verifies identity.
+
+Authorization must be separately enforced through supported controls and integrations.
+
+### Mistake 5 — Restart MLflow for Every Failure
+
+Not every failure originates in MLflow.
+
+The issue might be:
+
+```text
+PostgreSQL
+Object Storage
+IAM
+KMS
+Network
+Missing Artifact
+```
+
+### Mistake 6 — Model Alias Change Automatically Updates Serving
+
+Changing `champion` does not automatically reload a model already in memory.
+
+Deployment/reload mechanisms must apply the change.
+
+### Mistake 7 — Rolling Back the Container Reverses Database Changes
+
+Database migrations may require a separate recovery strategy.
+
+---
+
+# 22. MLOps / SRE Connection ⭐⭐⭐⭐⭐
+
+Days 1–3 focused on managing ML experiments and models.
+
+Day 4 introduced MLflow architecture.
+
+Day 5 applies SRE principles to the entire platform.
+
+```text
+MLflow Platform
+      ↓
+Availability
+      ↓
+Reliability
+      ↓
+Security
+      ↓
+Observability
+      ↓
+Recoverability
+      ↓
+Operational Readiness
+```
+
+An MLOps/ML Platform engineer should be able to answer:
+
+- Can engineers track experiments reliably?
+- Can registered models be resolved?
+- Can model artifacts be downloaded?
+- Are promotions controlled?
+- Can we detect failures before they cause major impact?
+- Can we restore the platform after a disaster?
+- Can we upgrade safely?
+- Can we verify which model is actually serving?
+
+**Important Lesson:**
+
+> Production MLflow reliability is about keeping the entire model-management workflow usable, not merely keeping the MLflow process running.
+
+---
+
+# 23. Quick Revision Cheat Sheet
+
+```text
+MLFLOW PRODUCTION ARCHITECTURE
+──────────────────────────────
+
+Users / Training Pipelines
+          ↓
+SSO / Authentication
+          ↓
+TLS / Load Balancer
+          ↓
+Multiple MLflow Instances
+          ↓
+    ┌─────┴─────┐
+    ▼           ▼
+PostgreSQL    Object Storage
+Metadata      Model Artifacts
+
+
+RELIABILITY
+───────────
+
+HA
+→ Survive component failures
+
+Backup
+→ Recover lost/corrupted data
+
+RPO
+→ Maximum tolerable data loss
+
+RTO
+→ Maximum tolerable recovery time
+
+
+SECURITY
+────────
+
+Authentication
+→ Who are you?
+
+Authorization
+→ What can you do?
+
+TLS
+→ Protect communication
+
+Secrets
+→ Protect credentials
+
+
+OBSERVABILITY
+─────────────
+
+SLI
+→ What are we measuring?
+
+SLO
+→ What target do we want?
+
+SLA
+→ What formal commitment exists?
+
+Error Budget
+→ Allowed failure within the SLO window
+
+
+FAILURE DOMAINS
+───────────────
+
+MLflow Server Down
+→ Tracking API unavailable
+
+PostgreSQL Down
+→ Metadata / Registry operations fail
+
+Artifact Store Down
+→ Model/artifact retrieval fails
+
+IAM / KMS Problem
+→ Access denied despite healthy infrastructure
+
+
+DISASTER RECOVERY
+─────────────────
+
+Restore Metadata
+       ↓
+Restore Artifacts
+       ↓
+Restore Configuration
+       ↓
+Validate Registry
+       ↓
+Load Champion Model
+       ↓
+Test Prediction
+```
+
+---
+
+# 24. Interview Revision Questions
+
+1. How would you design MLflow for 100 ML engineers?
+2. Why run multiple MLflow server instances?
+3. Why must all instances share the same backend database and artifact store?
+4. How would you design PostgreSQL HA?
+5. Why doesn't PostgreSQL replication replace backups?
+6. How would you secure an enterprise MLflow deployment?
+7. What is the difference between authentication and authorization?
+8. How would you control model promotion permissions?
+9. Which SLIs would you define for MLflow?
+10. Why isn't a successful health check sufficient?
+11. What are RPO and RTO?
+12. What must be backed up in MLflow?
+13. How would you recover a deleted model artifact?
+14. What happens if PostgreSQL is unavailable?
+15. What happens if object storage is unavailable?
+16. How would you troubleshoot HTTP 403 during model downloads?
+17. How would you safely upgrade MLflow?
+18. Why can database migrations complicate rollback?
+19. How would you validate a disaster recovery exercise?
+20. What is the difference between MLflow application availability and overall ML platform health?
+
+---
+
+# 25. Day 5 Definition of Done
+
+- [x] Understood enterprise MLflow architecture.
+- [x] Understood application high availability.
+- [x] Understood PostgreSQL primary/standby architecture.
+- [x] Understood artifact-store reliability.
+- [x] Understood authentication and authorization.
+- [x] Understood TLS, IAM and secrets.
+- [x] Understood observability layers.
+- [x] Understood SLIs, SLOs and error budgets.
+- [x] Understood alerting priorities.
+- [x] Practiced failure isolation.
+- [x] Understood backup and recovery requirements.
+- [x] Understood HA vs backup.
+- [x] Understood RPO vs RTO.
+- [x] Practiced model artifact recovery.
+- [x] Understood safe upgrade strategies.
+- [x] Completed enterprise MLflow architecture review.
+
+## MLflow Day 5: COMPLETE ✅
+
+### The One Sentence to Remember
+
+**A production MLflow platform must be secure, highly available, observable and recoverable across the tracking server, PostgreSQL backend, model registry and artifact storage—not just have a healthy MLflow process.**
+
+---
+
+### Next: MLflow Day 6 — Final Capstone
+
+End-to-end experiment tracking, model packaging, registry lifecycle, inference, architecture troubleshooting and interview readiness.
+
+After completing Day 6, we close MLflow Phase 1 and move forward to DVC, model serving, FastAPI and Docker.

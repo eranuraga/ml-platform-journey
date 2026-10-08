@@ -1,96 +1,142 @@
-# MLflow Day 1 — Experiment Tracking
+# 📒 MLflow Day 1 — Experiment Tracking
 
-## 1. Learning Objective
+## 🎯 Objective
 
-Understand why MLflow exists and how it helps track machine learning experiments.
+Understand why MLflow is needed, how experiment tracking works, and how to track and compare machine learning training runs.
 
-Before MLflow, our SRE Incident Predictor worked like this:
+The goal is to move from manually training and saving models to maintaining a **traceable and organized ML experimentation workflow**.
+
+---
+
+# 1. Why Do We Need MLflow? ⭐⭐⭐⭐⭐
+
+Before MLflow, our SRE Incident Predictor followed this workflow:
 
 ```text
 Data
   ↓
 Validation
   ↓
-Preprocessing
+Feature Preparation
   ↓
 Training
   ↓
 Evaluation
   ↓
-Print Accuracy / Precision / Recall / F1
+Print Metrics
   ↓
 Save model.joblib
 ```
 
-**Problem:** When we train multiple models, how do we remember which configuration produced which result?
+This works when training a model once.
 
-MLflow solves this through **Experiment Tracking**.
+But imagine training the same model 50 times with different parameters.
 
-## 2. Why Do We Need MLflow?
-
-Imagine training the same model several times:
-
-| Run | max_iter | Accuracy | Recall |
-|---|---:|---:|---:|
-| Run 1 | 1000 | 83.33% | 50% |
-| Run 2 | 500 | 91.67% | 55% |
-| Run 3 | 200 | 87.50% | 80% |
-
-Without experiment tracking, we might have:
+We might end up with:
 
 ```text
-model.joblib
-model_v2.joblib
-model_final.joblib
-model_final_latest.joblib
+models/
+├── model.joblib
+├── model_v2.joblib
+├── model_final.joblib
+└── model_final_latest.joblib
 ```
 
-We cannot easily answer:
+Problems:
 
-- Which parameters produced a particular model?
-- What were its evaluation metrics?
-- Which training run generated it?
-- Where are its evaluation files?
-- Which run should we investigate further?
+- Which parameters were used?
+- Which dataset produced the model?
+- What were its accuracy, precision, recall and F1?
+- Which training run produced which artifact?
+- Which model performed better?
+- Can we reproduce the training experiment?
 
-**MLflow Tracking records and organizes training runs so they can be inspected and compared later.**
+**MLflow helps us organize and track these experiments.**
 
-## 3. MLflow Mental Model ⭐⭐⭐⭐⭐
+Important:
+
+> MLflow provides tracking infrastructure. Complete reproducibility also requires capturing code versions, dataset versions, dependencies and other relevant information.
+
+---
+
+# 2. What Is MLflow?
+
+MLflow is an open-source platform for managing machine learning and AI workflows.
+
+Some of its important capabilities include:
 
 ```text
-MLFLOW
+MLflow
    │
-   └── EXPERIMENT
+   ├── Experiment Tracking
+   │
+   ├── Model Packaging
+   │
+   ├── Model Registry
+   │
+   └── Model Evaluation / Deployment Integration
+```
+
+On Day 1, we focus only on:
+
+**MLflow Experiment Tracking**
+
+It helps us record:
+
+```text
+Training Run
+     │
+     ├── Parameters
+     ├── Metrics
+     ├── Tags
+     ├── Artifacts
+     └── Logged Models
+```
+
+---
+
+# 3. MLflow Experiment vs Run ⭐⭐⭐⭐⭐
+
+This is the most important Day 1 concept.
+
+```text
+MLflow
+   │
+   └── Experiment
           │
-          ├── RUN 1
+          ├── Run 1
           │    ├── Parameters
           │    ├── Metrics
-          │    ├── Tags
           │    └── Artifacts
           │
-          ├── RUN 2
+          ├── Run 2
           │    ├── Parameters
           │    ├── Metrics
-          │    ├── Tags
           │    └── Artifacts
           │
-          └── RUN 3
-               └── ...
+          └── Run 3
+               ├── Parameters
+               ├── Metrics
+               └── Artifacts
 ```
 
 ### Experiment
 
 A logical collection of related training runs.
 
-Our example:
+Example:
 
 ```python
-mlflow.set_experiment("sre-incident-predictor")
+mlflow.set_experiment(
+    "sre-incident-predictor"
+)
 ```
+
+This selects or creates an experiment.
 
 ### Run
 
-One tracked execution of our training workflow.
+A tracked execution of our training workflow.
 
 ```python
 with mlflow.start_run():
@@ -99,23 +145,45 @@ with mlflow.start_run():
 
 Each run has a unique Run ID.
 
-**Mental model:**
+**Mental Model:**
 
-- Experiment = collection of related attempts.
-- Run = one tracked attempt.
+```text
+Experiment
+    ↓
+Collection of related attempts
 
-## 4. Parameters vs Metrics vs Tags vs Artifacts ⭐⭐⭐⭐⭐
+Run
+    ↓
+One tracked attempt
+```
+
+---
+
+# 4. Parameters vs Metrics vs Tags vs Artifacts ⭐⭐⭐⭐⭐
+
+These four concepts must be clear.
 
 | Component | Meaning | Example |
 |---|---|---|
 | Parameters | What did I configure? | `max_iter=1000` |
-| Metrics | What did I measure? | `recall=0.50` |
-| Tags | What descriptive context should I attach? | `purpose=baseline` |
-| Artifacts | What files did the run produce? | `evaluation.json` |
+| Metrics | What did I measure? | `recall=0.75` |
+| Tags | What additional context exists? | `purpose=baseline` |
+| Artifacts | What files were produced? | `evaluation.json` |
 
-### Parameters
+## Parameters
 
-Configuration choices used during training.
+Parameters represent configuration values used during training.
+
+Example:
+
+```python
+mlflow.log_param(
+    "max_iter",
+    1000
+)
+```
+
+Multiple parameters:
 
 ```python
 mlflow.log_params({
@@ -125,26 +193,49 @@ mlflow.log_params({
 })
 ```
 
-Parameters describe **what we used**.
+**Mental Model:**
 
-### Metrics
+```text
+PARAMETERS
+    ↓
+What did I configure?
+```
 
-Measured results of training/evaluation.
+## Metrics
+
+Metrics represent numerical measurements.
+
+Example:
+
+```python
+mlflow.log_metric(
+    "accuracy",
+    0.83
+)
+```
+
+Multiple metrics:
 
 ```python
 mlflow.log_metrics({
-    "accuracy": accuracy,
-    "precision": precision,
-    "recall": recall,
-    "f1": f1
+    "accuracy": 0.83,
+    "precision": 1.0,
+    "recall": 0.50,
+    "f1": 0.67
 })
 ```
 
-Metrics describe **what happened**.
+**Mental Model:**
 
-### Tags
+```text
+METRICS
+    ↓
+What happened?
+```
 
-Descriptive metadata about a run.
+## Tags
+
+Tags provide descriptive metadata.
 
 ```python
 mlflow.set_tag(
@@ -153,11 +244,25 @@ mlflow.set_tag(
 )
 ```
 
-Tags can describe project context, run purpose, team, environment or other useful information.
+Examples:
 
-### Artifacts
+```text
+project     = sre-incident-predictor
+purpose     = baseline-classifier
+team        = ml-platform
+```
 
-Files generated or retained by a training run.
+**Mental Model:**
+
+```text
+TAGS
+    ↓
+What context should I attach?
+```
+
+## Artifacts
+
+Artifacts are files generated or retained during a run.
 
 Examples:
 
@@ -168,23 +273,33 @@ classification_report.html
 feature_report.csv
 ```
 
-Log a file:
+Log an artifact:
 
 ```python
-mlflow.log_artifact("evaluation.json")
+mlflow.log_artifact(
+    "evaluation.json"
+)
 ```
 
-**Important:** Metrics are structured numerical measurements; artifacts are stored files.
+**Mental Model:**
 
-## 5. Installing MLflow
+```text
+ARTIFACTS
+    ↓
+What files did this run produce?
+```
 
-Install inside your Python virtual environment:
+---
+
+# 5. Installing MLflow
+
+Install MLflow inside the Python virtual environment:
 
 ```bash
 pip install mlflow
 ```
 
-Verify:
+Verify installation:
 
 ```bash
 mlflow --version
@@ -196,20 +311,94 @@ Import:
 import mlflow
 ```
 
-## 6. Your First Tracked Run
+---
 
-We used our existing Scikit-learn training workflow.
+# 6. Creating Our First MLflow Experiment
+
+We used our existing SRE Incident Predictor.
 
 ```python
 import mlflow
 
+mlflow.set_experiment(
+    "sre-incident-predictor"
+)
+```
+
+Now start a run:
+
+```python
+with mlflow.start_run():
+    print("Training started")
+```
+
+The `with` statement manages the run context.
+
+Conceptually:
+
+```text
+start_run()
+     ↓
+Active Run
+     ↓
+Log Parameters
+     ↓
+Log Metrics
+     ↓
+Log Artifacts
+     ↓
+Run Ends
+```
+
+The run is normally closed automatically when the context exits.
+
+---
+
+# 7. Tracking Our Scikit-learn Model ⭐⭐⭐⭐⭐
+
+Our original model:
+
+```python
 from sklearn.linear_model import LogisticRegression
+
+model = LogisticRegression(
+    max_iter=1000,
+    random_state=42
+)
+
+model.fit(
+    X_train,
+    y_train
+)
+```
+
+After training:
+
+```python
+predictions = model.predict(
+    X_test
+)
+```
+
+Now MLflow helps us track this workflow.
+
+Example:
+
+```python
+import mlflow
+import mlflow.sklearn
+
+from sklearn.linear_model import LogisticRegression
+
 from sklearn.metrics import (
     accuracy_score,
     precision_score,
     recall_score,
     f1_score
 )
+
+# Assumes X_train, X_test, y_train, y_test
+# have already been prepared.
 
 mlflow.set_experiment(
     "sre-incident-predictor"
@@ -232,15 +421,23 @@ with mlflow.start_run():
 
     predictions = model.predict(X_test)
 
-    accuracy = accuracy_score(y_test, predictions)
+    accuracy = accuracy_score(
+        y_test, predictions
+    )
+
     precision = precision_score(
-        y_test, predictions, zero_division=0
+        y_test, predictions,
+        zero_division=0
     )
+
     recall = recall_score(
-        y_test, predictions, zero_division=0
+        y_test, predictions,
+        zero_division=0
     )
+
     f1 = f1_score(
-        y_test, predictions, zero_division=0
+        y_test, predictions,
+        zero_division=0
     )
 
     mlflow.log_metrics({
@@ -254,13 +451,30 @@ with mlflow.start_run():
         "purpose",
         "baseline-classifier"
     )
+
+    mlflow.sklearn.log_model(
+        sk_model=model,
+        name="incident_model"
+    )
 ```
 
-**Note:** This assumes `X_train`, `X_test`, `y_train`, and `y_test` have already been prepared using our existing data validation, preprocessing and train/test split workflow.
+**Important:** MLflow does not replace Scikit-learn.
 
-## 7. Logging an Evaluation Artifact
+```text
+Scikit-learn
+     ↓
+Train and Evaluate
 
-Create a JSON report:
+MLflow
+     ↓
+Track and Manage Results
+```
+
+---
+
+# 8. Logging an Evaluation Artifact
+
+Create an evaluation report:
 
 ```python
 import json
@@ -273,38 +487,42 @@ evaluation = {
 }
 
 with open("evaluation.json", "w") as file:
-    json.dump(evaluation, file, indent=2)
+    json.dump(
+        evaluation,
+        file,
+        indent=2
+    )
 ```
 
 Log it inside the active MLflow run:
 
 ```python
-mlflow.log_artifact("evaluation.json")
-```
-
-This gives the run a downloadable evaluation report.
-
-## 8. Logging the Trained Model
-
-We also logged our Scikit-learn model:
-
-```python
-mlflow.sklearn.log_model(
-    sk_model=model,
-    name="incident_model"
+mlflow.log_artifact(
+    "evaluation.json"
 )
 ```
 
-This creates a tracked MLflow model with associated model metadata and artifacts.
+Now our run contains:
 
-We'll explore model signatures, flavors, dependencies and input examples in **Day 2**.
+```text
+Run
+ ├── Parameters
+ ├── Metrics
+ ├── Tags
+ ├── evaluation.json
+ └── incident_model
+```
 
-## 9. MLflow UI ⭐⭐⭐⭐⭐
+---
 
-For a local MLflow tracking server:
+# 9. MLflow UI ⭐⭐⭐⭐⭐
+
+Start the local MLflow server:
 
 ```bash
-mlflow server --host 127.0.0.1 --port 5000
+mlflow server \
+  --host 127.0.0.1 \
+  --port 5000
 ```
 
 Open:
@@ -313,7 +531,7 @@ Open:
 http://127.0.0.1:5000
 ```
 
-If logging to this server, configure the training process:
+To send training runs to this server:
 
 ```python
 mlflow.set_tracking_uri(
@@ -321,147 +539,151 @@ mlflow.set_tracking_uri(
 )
 ```
 
-Set the tracking URI **before** creating or selecting the experiment.
+Configure the tracking URI before selecting the experiment.
 
-### What to inspect in the UI
+In the UI:
 
 ```text
-Experiment
+MLflow UI
     ↓
-Select Run
+Experiments
     ↓
-Parameters
-Metrics
-Tags
-Artifacts
-Logged Model
+sre-incident-predictor
+    ↓
+Runs
+    ↓
+Parameters / Metrics / Artifacts
 ```
 
-We successfully created and inspected our `sre-incident-predictor` experiment.
+We can inspect individual runs and compare multiple runs.
 
-## 10. Comparing Multiple Runs ⭐⭐⭐⭐⭐
+---
 
-We created two runs with different training configurations.
+# 10. Comparing Multiple Runs ⭐⭐⭐⭐⭐
 
-MLflow allowed us to compare:
+Suppose we have:
+
+| Metric | Run A | Run B |
+|---|---:|---:|
+| Accuracy | 95% | 90% |
+| Precision | 98% | 82% |
+| Recall | 50% | 95% |
+| F1 | 66% | 88% |
+
+Which run is better?
+
+There is no universal answer.
+
+For our incident predictor, missing incidents may be more expensive than generating additional alerts.
+
+Run B may therefore deserve consideration because it catches more actual incidents.
+
+However, we should also inspect false positives, dataset quality and evaluation reliability.
+
+**Important Lesson:**
+
+> The highest accuracy does not automatically mean the best production model.
+
+MLflow makes these comparisons easier by storing metrics from different runs together.
+
+---
+
+# 11. Parallel Coordinates Plot
+
+During our Day 1 exercise, we compared two runs in the MLflow UI using the Parallel Coordinates Plot.
+
+Conceptually:
 
 ```text
-RUN 1                 RUN 2
+Run A ── Parameters ── Accuracy ── Recall ── F1
 
-Parameters            Parameters
-Accuracy              Accuracy
-Precision             Precision
-Recall                Recall
-F1                    F1
-Artifacts             Artifacts
+Run B ── Parameters ── Accuracy ── Recall ── F1
 ```
 
-We also explored the **Parallel Coordinates Plot** in the MLflow UI.
+This visualization helps identify relationships between model configurations and measured outcomes.
 
-It visually connects parameter configurations and metrics across selected runs.
+It becomes particularly useful when comparing many training runs.
 
-### Important ML lesson
+---
 
-The model with the highest accuracy is not necessarily the best model for production.
+# 12. Run ID vs Run Name
 
-For our SRE Incident Predictor:
+Every tracked MLflow run has a unique Run ID.
 
 ```text
-Run A
-Accuracy = 95%
-Recall   = 50%
-
-Run B
-Accuracy = 90%
-Recall   = 95%
+Run ID
+   ↓
+Unique identifier for a run
 ```
 
-Run B may be more suitable when missing real incidents is particularly costly.
-
-However, we must also consider precision, false-positive volume, data quality and evaluation reliability.
-
-**MLflow records results. It does not automatically determine which model is operationally best.**
-
-## 11. Run ID vs Run Name
-
-Every MLflow run has a unique Run ID.
-
-MLflow may also assign a readable run name.
-
-Example:
+MLflow can also generate readable run names.
 
 ```text
-Run ID:
-Unique identifier used to reference a run
-
-Run Name:
-Human-readable label for easier navigation
+Run Name
+   ↓
+Human-friendly label
 ```
 
-Run names can be customized.
+The Run ID is important for referencing a specific run and tracing its outputs.
 
-Run IDs are useful for tracing artifacts and model lineage.
+---
 
-## 12. MLflow Tracking vs Model Registry
+# 13. MLflow Tracking vs Model Registry
 
-Do not confuse the two.
+These are different responsibilities.
 
-**Experiment Tracking:**
+### Experiment Tracking
 
 ```text
 What did we try?
-Which parameters?
-Which metrics?
-Which artifacts?
-Which run?
+     ↓
+Experiment
+     ↓
+Runs
+     ↓
+Parameters / Metrics / Artifacts
 ```
 
-**Model Registry:**
+### Model Registry
 
 ```text
-Which models are registered?
-Which versions exist?
-Which model is champion?
-Which candidate is approved?
+Which models are managed?
+     ↓
+Registered Model
+     ↓
+Versions
+     ↓
+Aliases
+     ↓
+Champion / Candidate
 ```
 
-Model Registry is covered separately in **Day 3**.
+**Tracking records experimentation. Registry manages selected models and their lifecycle metadata.**
 
-## 13. What MLflow Does NOT Do Automatically
+Model Registry is covered in Day 3.
 
-MLflow Tracking does not automatically:
+---
 
-- Make an ML model accurate.
-- Guarantee reproducible training.
-- Validate the quality of our dataset.
-- Choose the best model for production.
-- Deploy a model simply because it was logged.
-- Guarantee that every relevant dependency or dataset version was captured.
+# 14. Common Mistakes
 
-We still need appropriate training code, data lineage, versioning, evaluation and deployment processes.
+### Mistake 1 — Experiment vs Run
 
-MLflow provides infrastructure for tracking and organizing those details.
-
-## 14. Common Mistakes
-
-### Mistake 1 — Confusing Experiment and Run
-
-Incorrect mental model:
+Incorrect:
 
 ```text
-Experiment = one training execution
+Experiment = one training attempt
 ```
 
 Correct:
 
 ```text
 Experiment
-   ├── Run 1
-   ├── Run 2
-   └── Run 3
+    ├── Run 1
+    ├── Run 2
+    └── Run 3
 ```
 
-### Mistake 2 — Confusing Parameters and Metrics
+### Mistake 2 — Parameters vs Metrics
 
 ```text
 max_iter = 1000
@@ -470,18 +692,12 @@ max_iter = 1000
 Parameter.
 
 ```text
-recall = 0.75
+recall = 0.85
 ```
 
 Metric.
 
-### Mistake 3 — Thinking Every Artifact Is a Metric
-
-```text
-evaluation.json
-```
-
-Artifact.
+### Mistake 3 — Metric vs Artifact
 
 ```text
 accuracy = 0.91
@@ -489,7 +705,15 @@ accuracy = 0.91
 
 Metric.
 
-### Mistake 4 — Assuming Logging Means Deployment
+```text
+evaluation.json
+```
+
+Artifact.
+
+### Mistake 4 — Logged Model Means Deployed Model
+
+Logging a model does not automatically deploy it.
 
 ```text
 Train
@@ -499,15 +723,30 @@ Log Model
 Tracked Model
 ```
 
-This does not automatically mean the model is serving production traffic.
+Deployment is a separate process.
 
-### Mistake 5 — Comparing Runs Only by Accuracy
+### Mistake 5 — Assuming MLflow Guarantees Reproducibility
 
-For incident prediction, recall and false negatives may be more important than overall accuracy.
+MLflow tracks information that is logged or automatically captured.
 
-## 15. MLOps / SRE Connection
+For stronger reproducibility, we also need:
 
-Our original workflow:
+```text
+Code Version
+Dataset Version
+Dependencies
+Training Configuration
+Random Seeds
+Environment Information
+```
+
+We will extend this with DVC and other MLOps practices.
+
+---
+
+# 15. MLOps / SRE Connection
+
+Before MLflow:
 
 ```text
 Train
@@ -519,7 +758,7 @@ Print Results
 Save Model
 ```
 
-Now becomes:
+After introducing MLflow:
 
 ```text
 Train
@@ -527,94 +766,118 @@ Train
 Evaluate
   ↓
 MLflow Run
+  │
   ├── Parameters
   ├── Metrics
   ├── Tags
   ├── Artifacts
   └── Logged Model
-       ↓
-MLflow UI
-       ↓
-Compare Runs
-       ↓
-Investigate Model Behavior
+         ↓
+      MLflow UI
+         ↓
+    Compare Runs
+         ↓
+  Investigate Results
 ```
 
-This is our first step toward a traceable, managed ML lifecycle.
+This creates the foundation for experiment traceability and model lifecycle management.
 
-## 16. Quick Revision Cheat Sheet
+---
+
+# 16. Quick Revision Cheat Sheet
 
 ```python
 import mlflow
+import mlflow.sklearn
 
-# Set tracking destination
+# Tracking server
 mlflow.set_tracking_uri(
     "http://127.0.0.1:5000"
 )
 
-# Select experiment
+# Experiment
 mlflow.set_experiment(
     "sre-incident-predictor"
 )
 
-# Start tracked run
+# Run
 with mlflow.start_run():
 
     # Parameters
-    mlflow.log_param("max_iter", 1000)
+    mlflow.log_param(
+        "max_iter",
+        1000
+    )
 
     # Metrics
-    mlflow.log_metric("accuracy", 0.91)
-    mlflow.log_metric("recall", 0.85)
+    mlflow.log_metric(
+        "accuracy",
+        0.91
+    )
+
+    mlflow.log_metric(
+        "recall",
+        0.85
+    )
 
     # Tags
-    mlflow.set_tag("purpose", "baseline")
+    mlflow.set_tag(
+        "purpose",
+        "baseline"
+    )
 
     # Artifact
-    mlflow.log_artifact("evaluation.json")
+    mlflow.log_artifact(
+        "evaluation.json"
+    )
 
-    # Model (assuming model is already fitted)
+    # Trained model
     mlflow.sklearn.log_model(
         sk_model=model,
         name="incident_model"
     )
 ```
 
-## 17. Interview Revision Questions
+---
 
-Try answering these without looking at the notes.
+# 17. Interview Revision Questions
 
-1. Why do we need experiment tracking?
-2. What is the difference between an experiment and a run?
+1. Why do we need MLflow Experiment Tracking?
+2. What is the difference between an Experiment and a Run?
 3. What are parameters, metrics, tags and artifacts?
 4. What is a Run ID?
-5. Why is MLflow useful when training 100 different models?
-6. What is the difference between an evaluation metric and an artifact?
-7. Does logging a model automatically deploy it?
-8. Why shouldn't we select a model based only on accuracy?
-9. What does `mlflow.start_run()` do?
-10. How does MLflow fit into the MLOps lifecycle?
+5. How does MLflow help compare training runs?
+6. Does MLflow automatically select the best model?
+7. Does logging a model mean it is deployed?
+8. What is the difference between Experiment Tracking and Model Registry?
+9. What information would you track to reproduce a model?
+10. Why is MLflow useful in a team with many ML engineers?
 
-## 18. Day 1 Definition of Done
+---
 
+# 18. Day 1 Definition of Done
+
+- [x] Understood why experiment tracking is needed.
 - [x] Installed MLflow.
 - [x] Created an experiment.
-- [x] Created tracked runs.
+- [x] Created multiple runs.
 - [x] Logged parameters.
-- [x] Logged evaluation metrics.
+- [x] Logged metrics.
 - [x] Added tags.
-- [x] Logged evaluation artifacts.
+- [x] Logged artifacts.
 - [x] Logged a Scikit-learn model.
-- [x] Explored the MLflow UI.
+- [x] Opened the MLflow UI.
 - [x] Compared two runs.
-- [x] Understood the Experiment → Run hierarchy.
+- [x] Understood Run IDs and run names.
 
-**MLflow Day 1: COMPLETE.**
+## MLflow Day 1: COMPLETE ✅
 
-### The one sentence to remember
+### The One Sentence to Remember
 
 **MLflow Experiment Tracking helps us record, organize, compare and trace machine learning training runs instead of relying on scattered files and terminal output.**
 
+---
+
 ### Next: MLflow Day 2
 
-Model Logging, Model Flavors, Signatures, Input Examples, Dependencies, Model URIs, Loading Models and Autologging.
+Model Logging, Flavors, Signatures, Input Examples, Dependencies, Model URIs, Model Loading and Autologging.
