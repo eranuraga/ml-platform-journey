@@ -1,6 +1,6 @@
-# 📒 MLflow Day 2 — Model Logging, Signatures, Flavors & Autologging
+# MLflow Day 2 — Model Logging, Signatures, Flavors & Autologging
 
-## 🎯 Objective
+## Objective
 
 Understand how MLflow packages trained machine learning models so they can be stored, loaded, and used consistently across different environments.
 
@@ -35,7 +35,7 @@ Predict
 
 ---
 
-# 1. Revisiting Day 1 — Experiment Tracking
+## 1. Revisiting Day 1 — Experiment Tracking
 
 On Day 1, we learned:
 
@@ -83,7 +83,7 @@ Package and load the trained model
 
 ---
 
-# 2. What Is an MLflow Model? ⭐⭐⭐⭐⭐
+## 2. What Is an MLflow Model?
 
 An MLflow Model is a standardized package for representing a trained machine learning model.
 
@@ -146,7 +146,7 @@ metadata and loading interfaces
 
 ---
 
-# 3. MLflow Model Flavors ⭐⭐⭐⭐⭐
+## 3. MLflow Model Flavors
 
 A **flavor** describes a supported interface for loading or using an MLflow Model.
 
@@ -250,7 +250,7 @@ Important: Not every framework-specific operation is available through the gener
 
 ---
 
-# 4. Model Signature ⭐⭐⭐⭐⭐
+## 4. Model Signature
 
 One of the most important Day 2 concepts.
 
@@ -331,7 +331,7 @@ Model Input/Output Contract
 
 ---
 
-# 5. Inferring a Model Signature
+## 5. Inferring a Model Signature
 
 MLflow provides:
 
@@ -388,7 +388,7 @@ For a DataFrame containing six numerical features, MLflow can infer their names 
 
 ---
 
-# 6. Model Signature vs Data Validation
+## 6. Model Signature vs Data Validation
 
 These are related but different concepts.
 
@@ -445,7 +445,7 @@ model's expected schema?
 
 ---
 
-# 7. Input Example ⭐⭐⭐⭐⭐
+## 7. Input Example
 
 A signature describes the expected structure.
 
@@ -511,7 +511,7 @@ Input Example = Sample Request
 
 ---
 
-# 8. Logging a Model with Signature and Input Example ⭐⭐⭐⭐⭐
+## 8. Logging a Model with Signature and Input Example
 
 On Day 1:
 
@@ -552,7 +552,7 @@ This is much more useful for downstream consumers than an unexplained serialized
 
 ---
 
-# 9. Model Dependencies ⭐⭐⭐⭐
+## 9. Model Dependencies
 
 A trained Scikit-learn model depends on its software environment.
 
@@ -605,7 +605,7 @@ Important:
 
 ---
 
-# 10. Model URI ⭐⭐⭐⭐⭐
+## 10. Model URI
 
 After logging a model, we need a way to reference it.
 
@@ -650,7 +650,7 @@ We will learn registered-model URIs in Day 3.
 
 ---
 
-# 11. Loading a Model Using the Scikit-learn Flavor ⭐⭐⭐⭐⭐
+## 11. Loading a Model Using the Scikit-learn Flavor
 
 After logging:
 
@@ -700,7 +700,7 @@ but with MLflow's model packaging and metadata.
 
 ---
 
-# 12. Loading the Same Model Using Pyfunc ⭐⭐⭐⭐⭐
+## 12. Loading the Same Model Using Pyfunc
 
 We can also load the model through the generic MLflow interface.
 
@@ -753,7 +753,7 @@ Different Supported Interfaces
 
 ---
 
-# 13. Manual Logging ⭐⭐⭐⭐⭐
+## 13. Manual Logging
 
 On Day 1, we manually logged everything.
 
@@ -798,7 +798,7 @@ This is **manual logging**.
 
 ---
 
-# 14. Autologging ⭐⭐⭐⭐⭐
+## 14. Autologging
 
 MLflow provides automatic logging for supported ML frameworks.
 
@@ -864,7 +864,7 @@ supported training information
 
 ---
 
-# 15. Manual Logging vs Autologging ⭐⭐⭐⭐⭐
+## 15. Manual Logging vs Autologging
 
 | Manual Logging | Autologging |
 |---|---|
@@ -898,7 +898,7 @@ Therefore, manual logging is still valuable.
 
 ---
 
-# 16. Combining Autologging and Manual Logging ⭐⭐⭐⭐⭐
+## 16. Combining Autologging and Manual Logging
 
 This is an important production pattern.
 
@@ -956,7 +956,7 @@ When combining autologging and manual logging, avoid accidentally logging the sa
 
 ---
 
-# 17. Model Artifact vs MLflow Model
+## 17. Model Artifact vs MLflow Model
 
 An artifact can be any file produced by a run.
 
@@ -996,7 +996,7 @@ An MLflow Model uses artifacts for its stored files, but includes model-specific
 
 ---
 
-# 18. Training-Serving Consistency ⭐⭐⭐⭐⭐
+## 18. Training-Serving Consistency
 
 Remember our Scikit-learn preprocessing lessons.
 
@@ -1061,7 +1061,7 @@ This helps reduce training-serving skew.
 
 ---
 
-# 19. Common Mistakes
+## 19. Common Mistakes
 
 ### Mistake 1 — Signature vs Input Example
 
@@ -1119,7 +1119,7 @@ Custom business metrics and operational meaning often require manual logging.
 
 ---
 
-# 20. MLOps / SRE Connection
+## 20. MLOps / SRE Connection
 
 Day 1:
 
@@ -1163,7 +1163,7 @@ A common packaging and inference interface makes platform integration easier.
 
 ---
 
-# 21. Quick Revision Cheat Sheet
+## 21. Quick Revision Cheat Sheet
 
 ```python
 import mlflow
@@ -1222,7 +1222,7 @@ mlflow.sklearn.autolog()
 
 ---
 
-# 22. Interview Revision Questions
+## 22. Interview Revision Questions
 
 1. What is an MLflow Model?
 2. How is an MLflow Model different from a `.joblib` file?
@@ -1241,7 +1241,7 @@ mlflow.sklearn.autolog()
 
 ---
 
-# 23. Day 2 Definition of Done
+## 23. Day 2 Definition of Done
 
 - [x] Understood MLflow Model packaging.
 - [x] Understood model flavors.

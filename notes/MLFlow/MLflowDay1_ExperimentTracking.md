@@ -1,6 +1,6 @@
-# 📒 MLflow Day 1 — Experiment Tracking
+# MLflow Day 1 — Experiment Tracking
 
-## 🎯 Objective
+## Objective
 
 Understand why MLflow is needed, how experiment tracking works, and how to track and compare machine learning training runs.
 
@@ -8,7 +8,7 @@ The goal is to move from manually training and saving models to maintaining a **
 
 ---
 
-# 1. Why Do We Need MLflow? ⭐⭐⭐⭐⭐
+## 1. Why Do We Need MLflow?
 
 Before MLflow, our SRE Incident Predictor followed this workflow:
 
@@ -59,7 +59,7 @@ Important:
 
 ---
 
-# 2. What Is MLflow?
+## 2. What Is MLflow?
 
 MLflow is an open-source platform for managing machine learning and AI workflows.
 
@@ -95,7 +95,7 @@ Training Run
 
 ---
 
-# 3. MLflow Experiment vs Run ⭐⭐⭐⭐⭐
+## 3. MLflow Experiment vs Run
 
 This is the most important Day 1 concept.
 
@@ -159,7 +159,7 @@ One tracked attempt
 
 ---
 
-# 4. Parameters vs Metrics vs Tags vs Artifacts ⭐⭐⭐⭐⭐
+## 4. Parameters vs Metrics vs Tags vs Artifacts
 
 These four concepts must be clear.
 
@@ -291,7 +291,7 @@ What files did this run produce?
 
 ---
 
-# 5. Installing MLflow
+## 5. Installing MLflow
 
 Install MLflow inside the Python virtual environment:
 
@@ -313,7 +313,7 @@ import mlflow
 
 ---
 
-# 6. Creating Our First MLflow Experiment
+## 6. Creating Our First MLflow Experiment
 
 We used our existing SRE Incident Predictor.
 
@@ -354,7 +354,7 @@ The run is normally closed automatically when the context exits.
 
 ---
 
-# 7. Tracking Our Scikit-learn Model ⭐⭐⭐⭐⭐
+## 7. Tracking Our Scikit-learn Model
 
 Our original model:
 
@@ -472,7 +472,7 @@ Track and Manage Results
 
 ---
 
-# 8. Logging an Evaluation Artifact
+## 8. Logging an Evaluation Artifact
 
 Create an evaluation report:
 
@@ -515,7 +515,7 @@ Run
 
 ---
 
-# 9. MLflow UI ⭐⭐⭐⭐⭐
+## 9. MLflow UI
 
 Start the local MLflow server:
 
@@ -559,7 +559,7 @@ We can inspect individual runs and compare multiple runs.
 
 ---
 
-# 10. Comparing Multiple Runs ⭐⭐⭐⭐⭐
+## 10. Comparing Multiple Runs
 
 Suppose we have:
 
@@ -588,7 +588,7 @@ MLflow makes these comparisons easier by storing metrics from different runs tog
 
 ---
 
-# 11. Parallel Coordinates Plot
+## 11. Parallel Coordinates Plot
 
 During our Day 1 exercise, we compared two runs in the MLflow UI using the Parallel Coordinates Plot.
 
@@ -606,7 +606,7 @@ It becomes particularly useful when comparing many training runs.
 
 ---
 
-# 12. Run ID vs Run Name
+## 12. Run ID vs Run Name
 
 Every tracked MLflow run has a unique Run ID.
 
@@ -628,7 +628,7 @@ The Run ID is important for referencing a specific run and tracing its outputs.
 
 ---
 
-# 13. MLflow Tracking vs Model Registry
+## 13. MLflow Tracking vs Model Registry
 
 These are different responsibilities.
 
@@ -664,7 +664,7 @@ Model Registry is covered in Day 3.
 
 ---
 
-# 14. Common Mistakes
+## 14. Common Mistakes
 
 ### Mistake 1 — Experiment vs Run
 
@@ -744,7 +744,7 @@ We will extend this with DVC and other MLOps practices.
 
 ---
 
-# 15. MLOps / SRE Connection
+## 15. MLOps / SRE Connection
 
 Before MLflow:
 
@@ -784,7 +784,7 @@ This creates the foundation for experiment traceability and model lifecycle mana
 
 ---
 
-# 16. Quick Revision Cheat Sheet
+## 16. Quick Revision Cheat Sheet
 
 ```python
 import mlflow
@@ -840,7 +840,7 @@ with mlflow.start_run():
 
 ---
 
-# 17. Interview Revision Questions
+## 17. Interview Revision Questions
 
 1. Why do we need MLflow Experiment Tracking?
 2. What is the difference between an Experiment and a Run?
@@ -855,7 +855,7 @@ with mlflow.start_run():
 
 ---
 
-# 18. Day 1 Definition of Done
+## 18. Day 1 Definition of Done
 
 - [x] Understood why experiment tracking is needed.
 - [x] Installed MLflow.

@@ -1,6 +1,6 @@
-# 📒 MLflow Day 4 — Tracking Server Architecture, PostgreSQL & Artifact Storage
+# MLflow Day 4 — Tracking Server Architecture, PostgreSQL & Artifact Storage
 
-## 🎯 Objective
+## Objective
 
 Understand how MLflow works as a centralized service and how its components interact in a production-style architecture.
 
@@ -44,7 +44,7 @@ By the end, we should understand:
 
 ---
 
-# 1. Revisiting Days 1–3
+## 1. Revisiting Days 1–3
 
 Our MLflow journey so far:
 
@@ -77,7 +77,7 @@ This is the purpose of Day 4.
 
 ---
 
-# 2. Why Do We Need a Centralized MLflow Server? ⭐⭐⭐⭐⭐
+## 2. Why Do We Need a Centralized MLflow Server?
 
 Our initial setup was suitable for one engineer.
 
@@ -138,7 +138,7 @@ Shared ML Platform Service
 
 ---
 
-# 3. MLflow Production Architecture ⭐⭐⭐⭐⭐
+## 3. MLflow Production Architecture
 
 The three most important components are:
 
@@ -191,7 +191,7 @@ This is the most important architecture diagram from Day 4.
 
 ---
 
-# 4. MLflow Client ⭐⭐⭐⭐⭐
+## 4. MLflow Client
 
 Our training code acts as an MLflow client.
 
@@ -261,7 +261,7 @@ MLflow Server
 
 ---
 
-# 5. MLflow Tracking Server ⭐⭐⭐⭐⭐
+## 5. MLflow Tracking Server
 
 The Tracking Server provides the central service interface for MLflow.
 
@@ -306,7 +306,7 @@ This becomes important when we introduce multiple MLflow instances for high avai
 
 ---
 
-# 6. Backend Store ⭐⭐⭐⭐⭐
+## 6. Backend Store
 
 The Backend Store contains structured tracking and registry metadata.
 
@@ -354,7 +354,7 @@ Where are its artifacts?
 
 ---
 
-# 7. Why PostgreSQL Instead of Local Storage? ⭐⭐⭐⭐⭐
+## 7. Why PostgreSQL Instead of Local Storage?
 
 For development, local tracking storage is convenient.
 
@@ -401,7 +401,7 @@ PostgreSQL does not automatically provide HA. Replication, failover, backups and
 
 ---
 
-# 8. Artifact Store ⭐⭐⭐⭐⭐
+## 8. Artifact Store
 
 The Artifact Store contains files produced by MLflow runs.
 
@@ -456,7 +456,7 @@ Actual Model and Artifact Files
 
 ---
 
-# 9. Backend Store vs Artifact Store ⭐⭐⭐⭐⭐
+## 9. Backend Store vs Artifact Store
 
 This distinction is essential.
 
@@ -512,7 +512,7 @@ Actual Model Files
 
 ---
 
-# 10. Running PostgreSQL Locally with Docker ⭐⭐⭐⭐
+## 10. Running PostgreSQL Locally with Docker
 
 For our Day 4 lab, we used Docker to simulate a separate PostgreSQL service.
 
@@ -575,7 +575,7 @@ docker logs mlflow-postgres
 
 ---
 
-# 11. PostgreSQL Connection URI ⭐⭐⭐⭐⭐
+## 11. PostgreSQL Connection URI
 
 MLflow needs a connection string to reach PostgreSQL.
 
@@ -624,7 +624,7 @@ to its metadata database
 
 ---
 
-# 12. PostgreSQL Python Driver
+## 12. PostgreSQL Python Driver
 
 MLflow needs an appropriate database driver.
 
@@ -640,7 +640,7 @@ For a production deployment, use an approved and maintained driver installation 
 
 ---
 
-# 13. Starting MLflow with PostgreSQL ⭐⭐⭐⭐⭐
+## 13. Starting MLflow with PostgreSQL
 
 Previously:
 
@@ -705,7 +705,7 @@ For production, we would use shared durable artifact storage.
 
 ---
 
-# 14. Connecting the Training Script to the Server ⭐⭐⭐⭐⭐
+## 14. Connecting the Training Script to the Server
 
 Our training script now becomes a client of the MLflow server.
 
@@ -761,7 +761,7 @@ PostgreSQL
 
 ---
 
-# 15. Verifying PostgreSQL Is Being Used
+## 15. Verifying PostgreSQL Is Being Used
 
 We should not simply assume MLflow is writing metadata to PostgreSQL.
 
@@ -802,7 +802,7 @@ We can further verify by creating a run and querying it through the MLflow UI/AP
 
 ---
 
-# 16. Artifact Storage Architecture ⭐⭐⭐⭐⭐
+## 16. Artifact Storage Architecture
 
 MLflow supports different artifact access patterns.
 
@@ -841,7 +841,7 @@ The server handles access to the configured artifact destination.
 
 ---
 
-# 17. Pattern B — Direct Artifact Access
+## 17. Pattern B — Direct Artifact Access
 
 ```text
 Training Client
@@ -885,7 +885,7 @@ Client → Storage
 
 ---
 
-# 18. PostgreSQL vs Artifact Store Failure Domains ⭐⭐⭐⭐⭐
+## 18. PostgreSQL vs Artifact Store Failure Domains
 
 This is one of the most important SRE concepts from Day 4.
 
@@ -901,7 +901,7 @@ Each failure has different symptoms.
 
 ---
 
-# 19. Failure Scenario A — MLflow Server Unavailable
+## 19. Failure Scenario A — MLflow Server Unavailable
 
 ```text
 Training Client     Healthy
@@ -937,7 +937,7 @@ The model-training computation itself may still be capable of running, but wheth
 
 ---
 
-# 20. Failure Scenario B — PostgreSQL Unavailable
+## 20. Failure Scenario B — PostgreSQL Unavailable
 
 ```text
 MLflow Server       Healthy
@@ -980,7 +980,7 @@ Tracking / Registry Degraded
 
 ---
 
-# 21. Failure Scenario C — Artifact Store Unavailable
+## 21. Failure Scenario C — Artifact Store Unavailable
 
 ```text
 MLflow Server       Healthy
@@ -1028,7 +1028,7 @@ However, new deployments, restarts or model reloads may fail if they need to dow
 
 ---
 
-# 22. Failure Domain Comparison
+## 22. Failure Domain Comparison
 
 | Component Failure | Likely Impact |
 |---|---|
@@ -1046,7 +1046,7 @@ We must monitor the entire dependency chain.
 
 ---
 
-# 23. Database Migrations ⭐⭐⭐⭐
+## 23. Database Migrations
 
 MLflow evolves over time.
 
@@ -1097,7 +1097,7 @@ We cover production upgrades in more detail on Day 5.
 
 ---
 
-# 24. Production Architecture vs Local Lab
+## 24. Production Architecture vs Local Lab
 
 Our local lab:
 
@@ -1151,7 +1151,7 @@ Those are the main topics for Day 5.
 
 ---
 
-# 25. Common Mistakes
+## 25. Common Mistakes
 
 ### Mistake 1 — PostgreSQL Stores Model Files
 
@@ -1221,7 +1221,7 @@ A schema migration can require a separate recovery procedure.
 
 ---
 
-# 26. MLOps / SRE Connection ⭐⭐⭐⭐⭐
+## 26. MLOps / SRE Connection
 
 Day 1–3 focused primarily on the ML engineer's perspective.
 
@@ -1270,7 +1270,7 @@ For an MLOps/SRE engineer, important questions include:
 
 ---
 
-# 27. Quick Revision Cheat Sheet
+## 27. Quick Revision Cheat Sheet
 
 ```bash
 # Start PostgreSQL locally
@@ -1336,7 +1336,7 @@ with mlflow.start_run():
 
 ---
 
-# 28. Interview Revision Questions
+## 28. Interview Revision Questions
 
 1. What is an MLflow Tracking Server?
 2. What is the difference between MLflow Client and Tracking Server?
@@ -1357,7 +1357,7 @@ with mlflow.start_run():
 
 ---
 
-# 29. Day 4 Definition of Done
+## 29. Day 4 Definition of Done
 
 - [x] Understood centralized MLflow architecture.
 - [x] Understood MLflow Client vs Tracking Server.

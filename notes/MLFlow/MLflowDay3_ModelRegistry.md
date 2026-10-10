@@ -1,6 +1,6 @@
-# 📒 MLflow Day 3 — Model Registry, Versions, Aliases & Model Lifecycle
+# MLflow Day 3 — Model Registry, Versions, Aliases & Model Lifecycle
 
-## 🎯 Objective
+## Objective
 
 Understand how MLflow Model Registry helps manage trained models after experimentation.
 
@@ -25,7 +25,7 @@ Model Lifecycle Management
 
 ---
 
-# 1. Why Do We Need a Model Registry? ⭐⭐⭐⭐⭐
+## 1. Why Do We Need a Model Registry?
 
 On Day 1, we created experiments and tracked multiple runs.
 
@@ -79,7 +79,7 @@ Not every experiment run needs to become a registered model.
 
 ---
 
-# 2. Experiment Tracking vs Model Registry ⭐⭐⭐⭐⭐
+## 2. Experiment Tracking vs Model Registry
 
 These are different responsibilities.
 
@@ -121,7 +121,7 @@ It builds on the models produced by tracked experiments.
 
 ---
 
-# 3. Registered Model vs Model Version ⭐⭐⭐⭐⭐
+## 3. Registered Model vs Model Version
 
 These two concepts must be clear.
 
@@ -180,7 +180,7 @@ But here we're managing ML model versions.
 
 ---
 
-# 4. Registering Our First Model ⭐⭐⭐⭐⭐
+## 4. Registering Our First Model
 
 We already logged a model on Day 2.
 
@@ -245,7 +245,7 @@ Registered Model Version 1
 
 ---
 
-# 5. Registering Another Model Version
+## 5. Registering Another Model Version
 
 Suppose another training run produces a different model.
 
@@ -293,7 +293,7 @@ Version numbers are assigned by the Registry. Don't assume a particular version 
 
 ---
 
-# 6. Why Model Versions Alone Are Not Enough
+## 6. Why Model Versions Alone Are Not Enough
 
 Imagine our inference application loads:
 
@@ -321,7 +321,7 @@ This brings us to **Model Aliases**.
 
 ---
 
-# 7. Model Aliases ⭐⭐⭐⭐⭐
+## 7. Model Aliases
 
 A model alias is a named reference to a registered model version.
 
@@ -366,7 +366,7 @@ This means the same alias can be reassigned to a different version.
 
 ---
 
-# 8. Candidate vs Champion ⭐⭐⭐⭐⭐
+## 8. Candidate vs Champion
 
 These are model lifecycle concepts represented using aliases.
 
@@ -412,7 +412,7 @@ Also, assigning `champion` does not guarantee that the model is deployed or curr
 
 ---
 
-# 9. Setting Model Aliases ⭐⭐⭐⭐⭐
+## 9. Setting Model Aliases
 
 MLflow provides the `MlflowClient` API.
 
@@ -467,7 +467,7 @@ This returns the version currently associated with the alias.
 
 ---
 
-# 10. Loading a Model Using a Registry URI ⭐⭐⭐⭐⭐
+## 10. Loading a Model Using a Registry URI
 
 On Day 2, we loaded models using their logged Model URI.
 
@@ -523,7 +523,7 @@ This separates the application's model reference from a hardcoded version number
 
 ---
 
-# 11. Model Promotion ⭐⭐⭐⭐⭐
+## 11. Model Promotion
 
 Suppose:
 
@@ -595,7 +595,7 @@ A deployment or model-reload mechanism must apply the change to serving instance
 
 ---
 
-# 12. Model Rollback ⭐⭐⭐⭐⭐
+## 12. Model Rollback
 
 Suppose Version 2 was promoted.
 
@@ -655,7 +655,7 @@ A complete rollback requires verifying which model version is actually serving.
 
 ---
 
-# 13. Promotion vs Deployment vs Rollback ⭐⭐⭐⭐⭐
+## 13. Promotion vs Deployment vs Rollback
 
 These are related but different operations.
 
@@ -694,7 +694,7 @@ Rollback if Required
 
 ---
 
-# 14. Model Quality Gates ⭐⭐⭐⭐⭐
+## 14. Model Quality Gates
 
 MLflow Registry does not automatically determine whether a model is good enough for production.
 
@@ -751,7 +751,7 @@ For a high-severity incident predictor, Version 2 might be more suitable, depend
 
 ---
 
-# 15. Model Lineage ⭐⭐⭐⭐⭐
+## 15. Model Lineage
 
 Lineage means understanding where a model came from.
 
@@ -816,7 +816,7 @@ Lineage helps us investigate these questions.
 
 ---
 
-# 16. Model Registry vs Artifact Store
+## 16. Model Registry vs Artifact Store
 
 Do not confuse these.
 
@@ -881,7 +881,7 @@ This distinction becomes particularly important in Day 4 when we study PostgreSQ
 
 ---
 
-# 17. End-to-End Registry Lifecycle ⭐⭐⭐⭐⭐
+## 17. End-to-End Registry Lifecycle
 
 Our complete Day 3 workflow:
 
@@ -942,7 +942,7 @@ Our complete Day 3 workflow:
 
 ---
 
-# 18. Common Mistakes
+## 18. Common Mistakes
 
 ### Mistake 1 — Experiment vs Registered Model
 
@@ -1012,7 +1012,7 @@ Complete lineage still requires capturing relevant dataset, code and environment
 
 ---
 
-# 19. MLOps / SRE Connection
+## 19. MLOps / SRE Connection
 
 Model Registry introduces familiar software release-management concepts into ML.
 
@@ -1046,7 +1046,7 @@ For an MLOps/SRE engineer, the important responsibilities include:
 
 ---
 
-# 20. Quick Revision Cheat Sheet
+## 20. Quick Revision Cheat Sheet
 
 ```python
 import mlflow
@@ -1114,7 +1114,7 @@ client.set_registered_model_alias(
 
 ---
 
-# 21. Interview Revision Questions
+## 21. Interview Revision Questions
 
 1. Why do we need MLflow Model Registry?
 2. What is the difference between Experiment Tracking and Model Registry?
@@ -1134,7 +1134,7 @@ client.set_registered_model_alias(
 
 ---
 
-# 22. Day 3 Definition of Done
+## 22. Day 3 Definition of Done
 
 - [x] Understood why Model Registry is needed.
 - [x] Distinguished Experiment Tracking from Model Registry.

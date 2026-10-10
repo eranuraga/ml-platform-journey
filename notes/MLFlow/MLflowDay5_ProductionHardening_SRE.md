@@ -1,6 +1,6 @@
-# 📒 MLflow Day 5 — Production Hardening, Reliability & SRE
+# MLflow Day 5 — Production Hardening, Reliability & SRE
 
-## 🎯 Objective
+## Objective
 
 Understand how to operate MLflow as a **secure, highly available, observable and recoverable enterprise platform**.
 
@@ -31,7 +31,7 @@ Enterprise MLflow Platform
 
 ---
 
-# 1. Revisiting Days 1–4
+## 1. Revisiting Days 1–4
 
 Our MLflow journey:
 
@@ -67,7 +67,7 @@ Day 5 answers:
 
 ---
 
-# 2. Enterprise MLflow Architecture ⭐⭐⭐⭐⭐
+## 2. Enterprise MLflow Architecture
 
 Imagine:
 
@@ -130,7 +130,7 @@ Persistent Model Artifacts
 
 ---
 
-# 3. High Availability ⭐⭐⭐⭐⭐
+## 3. High Availability
 
 A single MLflow server creates a potential single point of failure.
 
@@ -186,7 +186,7 @@ Three instances provide more flexibility for maintenance and failures, but incre
 
 ---
 
-# 4. PostgreSQL High Availability ⭐⭐⭐⭐⭐
+## 4. PostgreSQL High Availability
 
 PostgreSQL stores MLflow's structured metadata.
 
@@ -269,7 +269,7 @@ Asynchronous replication can reduce write latency but may permit data loss durin
 
 ---
 
-# 5. Artifact Storage Reliability ⭐⭐⭐⭐⭐
+## 5. Artifact Storage Reliability
 
 The Artifact Store contains actual files.
 
@@ -327,7 +327,7 @@ Actual Model Files
 
 ---
 
-# 6. Authentication vs Authorization ⭐⭐⭐⭐⭐
+## 6. Authentication vs Authorization
 
 These concepts are related but different.
 
@@ -408,7 +408,7 @@ The chosen MLflow authentication integration must actually enforce the intended 
 
 ---
 
-# 7. TLS, Secrets and Network Security ⭐⭐⭐⭐
+## 7. TLS, Secrets and Network Security
 
 A production MLflow platform should protect communications and credentials.
 
@@ -469,7 +469,7 @@ Protect credentials
 
 ---
 
-# 8. Observability ⭐⭐⭐⭐⭐
+## 8. Observability
 
 A healthy MLflow server process does not necessarily mean the entire platform is healthy.
 
@@ -524,7 +524,7 @@ Download Model
 
 ---
 
-# 9. SLI vs SLO vs SLA ⭐⭐⭐⭐⭐
+## 9. SLI vs SLO vs SLA
 
 ## SLI — Service Level Indicator
 
@@ -585,7 +585,7 @@ What formal commitment exists?
 
 ---
 
-# 10. Error Budgets ⭐⭐⭐⭐
+## 10. Error Budgets
 
 Suppose we define:
 
@@ -633,7 +633,7 @@ Allowed Failure Within Window
 
 ---
 
-# 11. Alerting Strategy ⭐⭐⭐⭐⭐
+## 11. Alerting Strategy
 
 Not every infrastructure metric should trigger a page.
 
@@ -664,7 +664,7 @@ We should prioritize user-impacting signals.
 
 ---
 
-# 12. Failure Isolation ⭐⭐⭐⭐⭐
+## 12. Failure Isolation
 
 One of the most important Day 5 skills.
 
@@ -727,7 +727,7 @@ At each layer ask:
 
 ---
 
-# 13. Backup Strategy ⭐⭐⭐⭐⭐
+## 13. Backup Strategy
 
 Imagine the entire MLflow environment is lost.
 
@@ -791,7 +791,7 @@ Restoring metadata without the corresponding artifacts may leave registered mode
 
 ---
 
-# 14. High Availability vs Backup ⭐⭐⭐⭐⭐
+## 14. High Availability vs Backup
 
 These are different concepts.
 
@@ -842,7 +842,7 @@ Recover Lost or Damaged Data
 
 ---
 
-# 15. RPO vs RTO ⭐⭐⭐⭐⭐
+## 15. RPO vs RTO
 
 Two important disaster recovery objectives.
 
@@ -890,7 +890,7 @@ Lower RPO/RTO targets generally require more automation, infrastructure investme
 
 ---
 
-# 16. Disaster Recovery Workflow ⭐⭐⭐⭐⭐
+## 16. Disaster Recovery Workflow
 
 A production MLflow recovery procedure might look like:
 
@@ -928,7 +928,7 @@ The important goal is to restore a consistent and usable MLflow platform.
 
 ---
 
-# 17. Validating Disaster Recovery ⭐⭐⭐⭐⭐
+## 17. Validating Disaster Recovery
 
 Restoring databases and storage is not enough.
 
@@ -984,7 +984,7 @@ Prediction
 
 ---
 
-# 18. Accidental Model Artifact Deletion ⭐⭐⭐⭐⭐
+## 18. Accidental Model Artifact Deletion
 
 This was one of our Day 5 exercises.
 
@@ -1025,7 +1025,7 @@ Restarting MLflow does not recreate deleted files in external object storage.
 
 ---
 
-# 19. Safe MLflow Upgrades ⭐⭐⭐⭐⭐
+## 19. Safe MLflow Upgrades
 
 MLflow versions may introduce:
 
@@ -1082,7 +1082,7 @@ Therefore:
 
 ---
 
-# 20. Enterprise Architecture Challenge ⭐⭐⭐⭐⭐
+## 20. Enterprise Architecture Challenge
 
 Our challenge:
 
@@ -1156,7 +1156,7 @@ Validate tracking, registry and artifact retrieval after deployment.
 
 ---
 
-# 21. Common Mistakes
+## 21. Common Mistakes
 
 ### Mistake 1 — Multiple MLflow Servers Mean Complete HA
 
@@ -1239,7 +1239,7 @@ Database migrations may require a separate recovery strategy.
 
 ---
 
-# 22. MLOps / SRE Connection ⭐⭐⭐⭐⭐
+## 22. MLOps / SRE Connection
 
 Days 1–3 focused on managing ML experiments and models.
 
@@ -1280,7 +1280,7 @@ An MLOps/ML Platform engineer should be able to answer:
 
 ---
 
-# 23. Quick Revision Cheat Sheet
+## 23. Quick Revision Cheat Sheet
 
 ```text
 MLFLOW PRODUCTION ARCHITECTURE
@@ -1382,7 +1382,7 @@ Test Prediction
 
 ---
 
-# 24. Interview Revision Questions
+## 24. Interview Revision Questions
 
 1. How would you design MLflow for 100 ML engineers?
 2. Why run multiple MLflow server instances?
@@ -1407,7 +1407,7 @@ Test Prediction
 
 ---
 
-# 25. Day 5 Definition of Done
+## 25. Day 5 Definition of Done
 
 - [x] Understood enterprise MLflow architecture.
 - [x] Understood application high availability.
